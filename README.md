@@ -1,3 +1,4 @@
+This README IS OBSOLETE, IT WILL BE FIXED IN THE FUTURE
 # Game Workflow (Prototype)
 
 A structured, AI-collaborative workflow for building game prototypes — from raw idea to playable prototype, one stage at a time.
