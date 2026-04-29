@@ -1,0 +1,3 @@
+This file marks the root of a workflow project.
+Scripts and hooks walk up from the current directory to find this file,
+so they always know the project root regardless of working directory depth.

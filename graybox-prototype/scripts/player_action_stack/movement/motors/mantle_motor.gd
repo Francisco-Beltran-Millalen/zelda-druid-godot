@@ -1,0 +1,102 @@
+class_name MantleMotor
+extends BaseMotor
+
+const MANTLE_PRIORITY_WEIGHT: int = 10
+const MIN_MANTLE_SPEED: float = 0.01
+const MIN_MANTLE_DURATION: float = 0.08
+
+@export var min_mantle_height: float = 1.4
+@export var mantle_vertical_speed: float = 4.0
+@export var mantle_forward_speed: float = 3.0
+@export var mantle_arc_height: float = 0.25
+
+var _is_mantling: bool = false
+var _needs_mantle_release: bool = false
+var _elapsed: float = 0.0
+var _duration: float = MIN_MANTLE_DURATION
+var _start_position: Vector3 = Vector3.ZERO
+var _target_position: Vector3 = Vector3.ZERO
+var _just_activated: bool = false
+
+func gather_proposals(current_mode: int, intents: Intents, services: Array[BaseService], _stamina: StaminaComponent) -> Array[TransitionProposal]:
+	if not intents.wants_mantle:
+		_needs_mantle_release = false
+
+	# Sticky state: if we are already mantling, we MUST continue until tick() finishes.
+	# The _just_activated flag ensures we hold the state during the one-frame window
+	# before _is_mantling is set in the first tick().
+	if current_mode == LocomotionState.ID.MANTLE and (_is_mantling or _just_activated):
+		return [TransitionProposal.new(LocomotionState.ID.MANTLE, TransitionProposal.Priority.FORCED, MANTLE_PRIORITY_WEIGHT)]
+
+	if _needs_mantle_release:
+		return []
+
+	var ledge: LedgeService = _get_service(services, LedgeService) as LedgeService
+	if ledge != null:
+		var facts: LedgeFacts = ledge.get_ledge_facts(_brain.get_body_reader())
+		# Check height and intent/proximity
+		var can_trigger: bool = facts.lip_height >= min_mantle_height
+		if can_trigger:
+			var at_edge: bool = facts.is_at_mantle_edge
+			var requesting: bool = intents.wants_mantle
+			var from_traversal: bool = current_mode == LocomotionState.ID.WALL_JUMP or \
+									   current_mode == LocomotionState.ID.FALL or \
+									   current_mode == LocomotionState.ID.CLIMB
+			
+		# Manual Mantle Trigger: requires explicit input, neck-height proximity, and valid ledge
+		if intents.wants_mantle and facts.is_at_mantle_edge and facts.lip_height >= min_mantle_height:
+			return [TransitionProposal.new(LocomotionState.ID.MANTLE, TransitionProposal.Priority.FORCED, MANTLE_PRIORITY_WEIGHT)]
+	return []
+
+func tick(delta: float, _intents: Intents, body: CharacterBody3D, _stamina: StaminaComponent, services: Array[BaseService]) -> void:
+	_just_activated = false
+	var ledge: LedgeService = _get_service(services, LedgeService) as LedgeService
+	if not _is_mantling and not _begin_mantle(body, ledge):
+		body.velocity = Vector3.ZERO
+		return
+
+	_elapsed = minf(_elapsed + delta, _duration)
+	var raw_progress: float = _elapsed / _duration
+	var eased_progress: float = smoothstep(0.0, 1.0, raw_progress)
+	var next_position: Vector3 = _start_position.lerp(_target_position, eased_progress)
+	next_position.y += sin(raw_progress * PI) * mantle_arc_height
+
+	body.global_position = next_position
+	body.velocity = Vector3.ZERO
+
+	if raw_progress >= 1.0:
+		body.global_position = _target_position
+		_is_mantling = false
+
+func on_activate(_body: CharacterBody3D) -> void:
+	_is_mantling = false
+	_just_activated = true
+	_needs_mantle_release = true # Lock input now that we successfully started
+	_elapsed = 0.0
+
+func on_deactivate(_body: CharacterBody3D) -> void:
+	_is_mantling = false
+	_elapsed = 0.0
+
+func _begin_mantle(body: CharacterBody3D, ledge: LedgeService) -> bool:
+	if ledge == null:
+		return false
+	
+	var facts: LedgeFacts = ledge.get_ledge_facts(_brain.get_body_reader())
+	if facts.target_position == Vector3.ZERO:
+		return false
+
+	_start_position = body.global_position
+	_target_position = facts.target_position
+
+	var vertical_distance: float = absf(_target_position.y - _start_position.y)
+	var horizontal_start: Vector2 = Vector2(_start_position.x, _start_position.z)
+	var horizontal_target: Vector2 = Vector2(_target_position.x, _target_position.z)
+	var horizontal_distance: float = horizontal_start.distance_to(horizontal_target)
+	var vertical_duration: float = vertical_distance / maxf(mantle_vertical_speed, MIN_MANTLE_SPEED)
+	var horizontal_duration: float = horizontal_distance / maxf(mantle_forward_speed, MIN_MANTLE_SPEED)
+
+	_duration = maxf(maxf(vertical_duration, horizontal_duration), MIN_MANTLE_DURATION)
+	_elapsed = 0.0
+	_is_mantling = true
+	return true
