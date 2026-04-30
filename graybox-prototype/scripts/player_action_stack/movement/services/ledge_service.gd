@@ -18,6 +18,7 @@ const MIN_DIRECTION_LENGTH_SQUARED: float = 0.001
 @export var mantle_edge_tolerance: float = 0.05
 @export var climb_wall_angle_max_deg: float = 30.0   ## Max angle between facing and wall normal to allow climbing
 @export var continue_climb_angle_max_deg: float = 45.0  ## Max angle to keep climbing (sticky after waist-cast angle increases at apex)
+@export var wall_detection_reach: float = 0.6  ## Forward cast distance for climb detection (capsule radius 0.5 + 0.1 buffer); prevents wall-suck artifact
 
 var _can_climb: bool = false
 var _climb_normal: Vector3 = Vector3.ZERO
@@ -29,18 +30,18 @@ var _mantle_target_position: Vector3 = Vector3.ZERO
 var _is_at_ledge_edge: bool = false
 
 var _waist_cast: ShapeCast3D
-var _head_cast: ShapeCast3D
+var _head_cast: RayCast3D
 var _down_cast: ShapeCast3D
 var _vault_landing_cast: ShapeCast3D
-var _left_cast: ShapeCast3D
-var _right_cast: ShapeCast3D
+var _left_cast: RayCast3D
+var _right_cast: RayCast3D
 
 func _ready() -> void:
 	set_process(false)
 	set_physics_process(false)
 	
 	_waist_cast = _create_forward_cast(0.5)
-	_head_cast = _create_forward_cast(1.5)
+	_head_cast = _create_forward_raycast(1.5)
 	_down_cast = ShapeCast3D.new()
 	
 	var sphere: SphereShape3D = SphereShape3D.new()
@@ -59,8 +60,8 @@ func _ready() -> void:
 	_vault_landing_cast.collision_mask = 1
 	add_child(_vault_landing_cast)
 
-	_left_cast  = _create_forward_cast(0.5)
-	_right_cast = _create_forward_cast(0.5)
+	_left_cast  = _create_forward_raycast(0.5)
+	_right_cast = _create_forward_raycast(0.5)
 
 func _create_forward_cast(y_pos: float) -> ShapeCast3D:
 	var cast: ShapeCast3D = ShapeCast3D.new()
@@ -70,6 +71,15 @@ func _create_forward_cast(y_pos: float) -> ShapeCast3D:
 	cast.target_position = Vector3(0, 0, -1.0)
 	cast.position = Vector3(0, y_pos, 0)
 	cast.collision_mask = 1
+	add_child(cast)
+	return cast
+
+func _create_forward_raycast(y_pos: float) -> RayCast3D:
+	var cast: RayCast3D = RayCast3D.new()
+	cast.target_position = Vector3(0, 0, -1.0)
+	cast.position = Vector3(0, y_pos, 0)
+	cast.collision_mask = 1
+	cast.enabled = false
 	add_child(cast)
 	return cast
 
@@ -91,13 +101,13 @@ func update_facts(body_reader: BodyReader) -> void:
 
 	_waist_cast.global_position = pos + Vector3(0, -0.2, 0)
 	_head_cast.global_position = pos + Vector3(0, 0.6, 0)
-	_waist_cast.target_position = facing
-	_head_cast.target_position = facing
+	_waist_cast.target_position = facing * wall_detection_reach
+	_head_cast.target_position = facing * wall_detection_reach
 	_down_cast.global_position = pos + facing * 1.0 + Vector3.UP * mantle_max_height
 	_vault_landing_cast.global_position = pos + facing * vault_landing_probe_distance + Vector3.UP * vault_landing_probe_height
 	
 	_waist_cast.force_shapecast_update()
-	_head_cast.force_shapecast_update()
+	_head_cast.force_raycast_update()
 	_down_cast.force_shapecast_update()
 	_vault_landing_cast.force_shapecast_update()
 	
@@ -134,8 +144,8 @@ func update_facts(body_reader: BodyReader) -> void:
 		_right_cast.global_position = pos + (right_dir  * 0.45)
 		_left_cast.target_position  = -_climb_normal * lateral_cast_reach
 		_right_cast.target_position = -_climb_normal * lateral_cast_reach
-		_left_cast.force_shapecast_update()
-		_right_cast.force_shapecast_update()
+		_left_cast.force_raycast_update()
+		_right_cast.force_raycast_update()
 		_has_wall_left  = _left_cast.is_colliding()
 		_has_wall_right = _right_cast.is_colliding()
 	else:
@@ -145,8 +155,8 @@ func update_facts(body_reader: BodyReader) -> void:
 		_right_cast.global_position = pos
 		_left_cast.target_position  = facing
 		_right_cast.target_position = facing
-		_left_cast.force_shapecast_update()
-		_right_cast.force_shapecast_update()
+		_left_cast.force_raycast_update()
+		_right_cast.force_raycast_update()
 
 ## Exposes all ledge-related facts in a single data carrier.
 func get_ledge_facts(body_reader: BodyReader) -> LedgeFacts:

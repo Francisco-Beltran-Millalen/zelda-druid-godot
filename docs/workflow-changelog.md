@@ -2,6 +2,52 @@
 
 ---
 
+## 2026-04-30: Fix Wall-Sucking and Optimize LedgeService Casts
+
+**Problem:** Two related issues in `LedgeService` / `ClimbMotor`:
+1. **Wall-sucking** — the `wall_stick` pull activated too early because `_waist_cast` and `_head_cast` detected walls at 1.0 unit, but player capsule radius is 0.5 units. The 0.5-unit gap meant climb state activated and wall_stick ran for ~1 second before the player touched the wall.
+2. **Unnecessary ShapeCast3D usage** — `_head_cast`, `_left_cast`, and `_right_cast` only call `is_colliding()` (no `get_collision_point()` needed), yet were implemented as ShapeCast3D sphere-sweeps.
+
+**Fix:**
+1. Added `@export var wall_detection_reach: float = 0.6` to `LedgeService`. Changed `_waist_cast` and `_head_cast` `target_position` from `facing` (1.0 unit) to `facing * wall_detection_reach` (0.6 unit = capsule radius + 0.1 buffer). Climb activates at near-contact distance; wall_stick now closes a ~0.1-unit gap (~0.2s at 0.5 m/s).
+2. Replaced `_head_cast`, `_left_cast`, `_right_cast` from `ShapeCast3D` to `RayCast3D`. Added `_create_forward_raycast()` helper alongside the existing `_create_forward_cast()`. All `force_shapecast_update()` calls on the three converted nodes replaced with `force_raycast_update()`. `_waist_cast`, `_down_cast`, and `_vault_landing_cast` remain `ShapeCast3D` (they use `get_collision_point()`).
+
+**Files:**
+- `graybox-prototype/scripts/player_action_stack/movement/services/ledge_service.gd`
+- `docs/slices/wall-sucking-fix-plan.md`
+- `docs/slices/raycast-bool-casts-plan.md`
+
+## 2026-04-30: Add `/slice` Two-Agent Orchestrator
+
+**Problem:** The graybox implementation workflow had four disconnected skills (`/slice-plan`, `/plan-eval`, `/implement-feature`, `/cold-audit`) that relied on the user to hand off between steps. Reviews were weak because the same session context carried into evaluation, eliminating the "cold" guarantee.
+
+**Fix:** Introduced a two-agent orchestrator system: a **Builder** (`/slice-builder`) that plans and implements a slice end-to-end as a single Senior Godot Architect persona, and a cold **Reviewer** (`/slice-reviewer`) that receives only file paths and no session context, citing Constitution clauses by ID. The **Orchestrator** (`/slice`) scopes the feature with the user, then runs two gated loops — plan review then code audit — each capped at 3 iterations before surfacing a stalemate. The user sees every critique verbatim. On Claude Code, true cold isolation is achieved via the `Agent` tool (sub-agent spawn); on Gemini, isolation is best-effort and documented in the skill. Old manual skills remain intact, marked as `(manual)` in AGENTS.md.
+
+**Files:**
+- `.agents/slice/SKILL.md`
+- `.agents/slice-builder/SKILL.md`
+- `.agents/slice-reviewer/SKILL.md`
+- `.claude/skills/slice/SKILL.md`
+- `.claude/skills/slice-builder/SKILL.md`
+- `.claude/skills/slice-reviewer/SKILL.md`
+- `.gemini/skills/slice/SKILL.md`
+- `.gemini/skills/slice-builder/SKILL.md`
+- `.gemini/skills/slice-reviewer/SKILL.md`
+- `AGENTS.md`
+
+## 2026-04-30: Edge Leap Motor & Climbing Refinement
+**Problem:** Lateral edge captures during climbing were inconsistent, and the wall-jump logic was overly complex. Previous attempts to modify `WallJumpMotor` compromised core movement feel.
+**Fix:** Introduced a dedicated `EDGE_LEAP` state and `EdgeLeapMotor` to handle leaping away from wall edges. Refactored climbing to a toggle-based system in `PlayerBrain` with contextual reset logic. Corrected Rule P7 architectural violations by ensuring all Motors access world state through the `MovementBroker`. Expanded `LedgeService` to support lateral detection and verified the entire system with 25 unit tests.
+**Files:**
+- `docs/architecture/ARCHITECTURE-MAP.md`
+- `graybox-prototype/scenes/main.tscn`
+- `graybox-prototype/scripts/base/intents.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/locomotion_state.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/movement_broker.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/player_brain.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/services/ledge_service.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/motors/edge_leap_motor.gd`
+
 ## 2026-04-30: Semantic Intent Refactor & Wall-Jump Fix
 **Problem:** The `MantleMotor` was incorrectly hijacking lateral and backward wall jumps when the player was near a ledge. Additionally, the codebase used raw hardware coordinate checks (e.g., `raw_input.y < -0.5`) which was difficult to read and hardware-dependent.
 **Fix:** Refactored the `Intents` system to use semantic, human-readable getters like `is_climbing_up` and `is_moving_forward`. Updated the `PlayerBrain` to handle hardware translation and populated a discrete `wish_dir`. Updated `MantleMotor`, `ClimbMotor`, and `WallJumpMotor` to use this new API. Enhanced the `DebugOverlay` to visualize semantic intents.
