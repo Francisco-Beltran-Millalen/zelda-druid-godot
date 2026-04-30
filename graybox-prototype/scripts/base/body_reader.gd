@@ -4,6 +4,7 @@ extends RefCounted
 var _body: CharacterBody3D
 
 func _init(body: CharacterBody3D) -> void:
+	assert(body is CharacterBody3D, "BodyReader requires a CharacterBody3D")
 	_body = body
 
 func get_global_position() -> Vector3:

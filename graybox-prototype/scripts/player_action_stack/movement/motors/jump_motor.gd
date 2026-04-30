@@ -49,4 +49,6 @@ func gather_proposals(current_mode: int, intents: Intents, services: Array[BaseS
 	return []
 
 func tick(_delta: float, _intents: Intents, body: CharacterBody3D, _stamina: StaminaComponent, _services: Array[BaseService]) -> void:
+	apply_locomotion_rotation(body, _intents, _delta)
 	body.velocity.y = jump_impulse
+	body.move_and_slide()

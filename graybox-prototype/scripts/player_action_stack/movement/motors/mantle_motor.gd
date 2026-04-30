@@ -33,19 +33,26 @@ func gather_proposals(current_mode: int, intents: Intents, services: Array[BaseS
 
 	var ledge: LedgeService = _get_service(services, LedgeService) as LedgeService
 	if ledge != null:
-		var facts: LedgeFacts = ledge.get_ledge_facts(_brain.get_body_reader())
-		# Check height and intent/proximity
-		var can_trigger: bool = facts.lip_height >= min_mantle_height
-		if can_trigger:
-			var at_edge: bool = facts.is_at_mantle_edge
-			var requesting: bool = intents.wants_mantle
-			var from_traversal: bool = current_mode == LocomotionState.ID.WALL_JUMP or \
-									   current_mode == LocomotionState.ID.FALL or \
-									   current_mode == LocomotionState.ID.CLIMB
+		var is_climbing: bool = current_mode == LocomotionState.ID.CLIMB
+		var is_wall_jumping: bool = current_mode == LocomotionState.ID.WALL_JUMP
+		
+		# Context restriction: Mantle only from climb or while wall jumping
+		if not (is_climbing or is_wall_jumping):
+			return []
 			
-		# Manual Mantle Trigger: requires explicit input, neck-height proximity, and valid ledge
-		if intents.wants_mantle and facts.is_at_mantle_edge and facts.lip_height >= min_mantle_height:
-			return [TransitionProposal.new(LocomotionState.ID.MANTLE, TransitionProposal.Priority.FORCED, MANTLE_PRIORITY_WEIGHT)]
+		var facts: LedgeFacts = ledge.get_ledge_facts(_brain.get_body_reader())
+		var at_edge: bool = facts.is_at_mantle_edge
+		# Re-introduce height threshold with tolerance for climb ceiling clip (1.33m).
+		# This prevents mantling lower walls.
+		var tall_enough: bool = facts.lip_height >= 1.2
+		
+		if at_edge and tall_enough:
+			var requesting: bool = intents.wants_mantle
+			if requesting or is_wall_jumping:
+				# FORCED (3) weight 10 beats:
+				# - Climb sticky state (OPPORTUNISTIC 2)
+				# - WallJump sticky state (FORCED 3, weight 5)
+				return [TransitionProposal.new(LocomotionState.ID.MANTLE, TransitionProposal.Priority.FORCED, MANTLE_PRIORITY_WEIGHT)]
 	return []
 
 func tick(delta: float, _intents: Intents, body: CharacterBody3D, _stamina: StaminaComponent, services: Array[BaseService]) -> void:
@@ -53,6 +60,7 @@ func tick(delta: float, _intents: Intents, body: CharacterBody3D, _stamina: Stam
 	var ledge: LedgeService = _get_service(services, LedgeService) as LedgeService
 	if not _is_mantling and not _begin_mantle(body, ledge):
 		body.velocity = Vector3.ZERO
+		body.move_and_slide()
 		return
 
 	_elapsed = minf(_elapsed + delta, _duration)
@@ -63,6 +71,7 @@ func tick(delta: float, _intents: Intents, body: CharacterBody3D, _stamina: Stam
 
 	body.global_position = next_position
 	body.velocity = Vector3.ZERO
+	body.move_and_slide()
 
 	if raw_progress >= 1.0:
 		body.global_position = _target_position

@@ -2,6 +2,47 @@
 
 ---
 
+## 2026-04-29: Mantle Priority Refinement & Intent Debugging
+
+**Problem:** The Mantle mechanic was unreliable: the manual trigger often failed, it couldn't reliably interrupt the sticky Climb state, and it suffered from regressions like automatic triggering and low-wall activation. Additionally, debugging input was difficult without visual feedback.
+
+**Fix:**
+- Refactored `MantleMotor.gd` to use the `FORCED` (3) priority category, ensuring manual Mantle requests successfully override the `OPPORTUNISTIC` (2) Climb state at wall ceilings.
+- Restricted Mantle context strictly to `CLIMB` (manual) and `WALL_JUMP` (auto-grab) states.
+- Re-introduced a `tall_enough` threshold (1.2m) to block unintended low-wall mantles while preserving the climb-to-mantle transition.
+- Updated `MovementBroker.gd` telemetry to display active `Intents` (e.g., `[Jump] [Mantle]`) in the F1 debug panel for real-time verification.
+- Adjusted `ClimbMotor.gd` to use `PLAYER_REQUESTED` (1) priority with specific weighting (5) to ensure deterministic arbitration against Mantle (weight 10).
+
+**Files:**
+- `graybox-prototype/scripts/player_action_stack/movement/motors/mantle_motor.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/motors/climb_motor.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/movement_broker.gd`
+
+---
+
+## 2026-04-29: Architectural Refactor & Constitution Compliance
+
+**Problem:** The graybox-prototype violated several clauses of the Architecture Constitution (P1, P3, P5, P7) and lacked G5 boundary validations.
+
+**Fix:** 
+- Isolated engine input to `PlayerBrain` by implementing a `mouse_motion_received` signal, consumed by `CameraRig` for zero-latency rotation (P1).
+- Delegated physics execution and rotation to individual motors. Moved `move_and_slide()` to all 12 motors and added `apply_locomotion_rotation()` helper to `BaseMotor` (P3, P7).
+- Implemented explicit loop ownership for `VisualsPivot`, disabling it by default and enabling it through `MovementBroker` (P5).
+- Added public boundary assertions to core classes (`BodyReader`, `StaminaComponent`, etc.) to enforce design contracts (G5).
+
+**Files:**
+- `graybox-prototype/scripts/player_action_stack/movement/player_brain.gd`
+- `graybox-prototype/scripts/player_action_stack/camera/camera_rig.gd`
+- `graybox-prototype/scripts/base/base_motor.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/movement_broker.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/visuals_pivot.gd`
+- `graybox-prototype/scripts/base/body_reader.gd`
+- `graybox-prototype/scripts/base/locomotion_state_reader.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/stamina_component.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/motors/*.gd` (12 files)
+
+---
+
 ## 2026-04-29: Workflow Restructure & GitHub Prep
 
 **Problem:** The file structure contained redundant layers (`.agent-utils/`), obsolete workflow artifacts (scripts, shared protocols, auto-export hooks), and branch-specific metadata that wasn't suited for a standalone GitHub repository.

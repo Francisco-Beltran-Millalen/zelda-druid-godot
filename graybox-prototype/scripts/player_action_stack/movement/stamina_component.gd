@@ -11,10 +11,12 @@ func _ready() -> void:
 	set_physics_process(false)
 
 func drain(amount: float) -> void:
+	assert(amount >= 0.0, "Amount must be non-negative")
 	current_stamina = clampf(current_stamina - amount, 0.0, max_stamina)
 	stamina_changed.emit(current_stamina, max_stamina)
 
 func recover(amount: float) -> void:
+	assert(amount >= 0.0, "Amount must be non-negative")
 	current_stamina = clampf(current_stamina + amount, 0.0, max_stamina)
 	stamina_changed.emit(current_stamina, max_stamina)
 

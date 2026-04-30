@@ -83,6 +83,8 @@ func tick(delta: float, intents: Intents, body: CharacterBody3D, stamina: Stamin
 				body.global_position.y = max_y
 				body.velocity.y = 0
 				_is_jumping = false
+				
+	body.move_and_slide()
 			
 	if _jump_timer <= 0:
 		_is_jumping = false

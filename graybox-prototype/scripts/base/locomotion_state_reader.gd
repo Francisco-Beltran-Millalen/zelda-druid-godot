@@ -10,6 +10,7 @@ signal state_changed(old_mode: int, new_mode: int)
 var _state: LocomotionState
 
 func _init(state: LocomotionState) -> void:
+	assert(state is LocomotionState, "LocomotionStateReader requires a LocomotionState")
 	_state = state
 	_state.state_changed.connect(_on_state_changed)
 

@@ -17,15 +17,17 @@ func _ready() -> void:
 	if _broker:
 		_broker.state_changed.connect(_on_locomotion_state_changed)
 	
+	if has_node("../EntityController/PlayerBrain"):
+		get_node("../EntityController/PlayerBrain").mouse_motion_received.connect(_on_mouse_motion)
+	
 	if _lens:
 		_lens.spring_length = 4.0
 		_lens.position = Vector3(0, 1.5, 0)
 
-func _input(event: InputEvent) -> void:
-	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		_yaw -= event.relative.x * mouse_sensitivity
-		_pitch -= event.relative.y * mouse_sensitivity
-		_pitch = clampf(_pitch, -1.2, 1.2)
+func _on_mouse_motion(relative: Vector2) -> void:
+	_yaw -= relative.x * mouse_sensitivity
+	_pitch -= relative.y * mouse_sensitivity
+	_pitch = clampf(_pitch, -1.2, 1.2)
 
 func _process(delta: float) -> void:
 	if not is_instance_valid(_body): return

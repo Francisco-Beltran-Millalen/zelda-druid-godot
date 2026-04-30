@@ -30,9 +30,9 @@ func gather_proposals(current_mode: int, intents: Intents, services: Array[BaseS
 	# true and the waist cast geometry flickers — without this clause, mode would
 	# oscillate Climb↔Walk every frame, producing a yaw seizure.
 	if climbing and ((on_floor and has_climb_context) or ledge.can_continue_climbing()):
-		return [TransitionProposal.new(LocomotionState.ID.CLIMB, 2)]
+		return [TransitionProposal.new(LocomotionState.ID.CLIMB, TransitionProposal.Priority.OPPORTUNISTIC, 5)]
 	if not climbing and ledge.can_climb():
-		return [TransitionProposal.new(LocomotionState.ID.CLIMB, 2)]
+		return [TransitionProposal.new(LocomotionState.ID.CLIMB, TransitionProposal.Priority.PLAYER_REQUESTED, 5)]
 	return []
 
 func tick(delta: float, intents: Intents, body: CharacterBody3D, stamina: StaminaComponent, services: Array[BaseService]) -> void:
@@ -109,6 +109,8 @@ func tick(delta: float, intents: Intents, body: CharacterBody3D, stamina: Stamin
 			if body.global_position.y >= max_y:
 				body.global_position.y = max_y
 				body.velocity.y = 0
+				
+	body.move_and_slide()
 
 	if stamina:
 		stamina.drain(stamina_cost_per_sec * delta)

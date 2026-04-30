@@ -67,5 +67,8 @@ func tick(delta: float, _intents: Intents, body: CharacterBody3D, _stamina: Stam
 	# Maintain trajectory
 	body.velocity.y -= gravity * delta
 
+	body.move_and_slide()
+
 	if body.velocity.y <= 0.0 or body.is_on_floor():
+
 		_rising = false

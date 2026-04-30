@@ -32,6 +32,7 @@ func gather_proposals(current_mode: int, intents: Intents, services: Array[BaseS
 	return []
 
 func tick(delta: float, intents: Intents, body: CharacterBody3D, stamina: StaminaComponent, _services: Array[BaseService]) -> void:
+	apply_locomotion_rotation(body, intents, delta)
 	var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 	body.velocity.y -= gravity * glide_gravity_multiplier * delta
 	body.velocity.y = maxf(body.velocity.y, -glide_fall_speed)
@@ -43,3 +44,5 @@ func tick(delta: float, intents: Intents, body: CharacterBody3D, stamina: Stamin
 
 	if stamina != null:
 		stamina.recover(stamina_recover_per_sec * STAMINA_RECOVERY_FACTOR * delta)
+
+	body.move_and_slide()

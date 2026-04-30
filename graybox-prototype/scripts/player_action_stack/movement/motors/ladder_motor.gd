@@ -35,3 +35,5 @@ func tick(delta: float, intents: Intents, body: CharacterBody3D, _stamina: Stami
 	## upward bump so they step onto the landing instead of capping at the ladder top.
 	if body.global_position.y >= ladder.get_top_y() - 0.1 and intents.raw_input.y < 0.0:
 		body.velocity.y = top_exit_bump
+		
+	body.move_and_slide()

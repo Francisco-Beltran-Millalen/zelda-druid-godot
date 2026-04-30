@@ -15,6 +15,7 @@ func gather_proposals(_current_mode: int, _intents: Intents, services: Array[Bas
 	return []
 
 func tick(delta: float, intents: Intents, body: CharacterBody3D, _stamina: StaminaComponent, _services: Array[BaseService]) -> void:
+	apply_locomotion_rotation(body, intents, delta)
 	var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
 	# Jump cut: tapping jump gives a short hop, holding gives full height
@@ -33,3 +34,5 @@ func tick(delta: float, intents: Intents, body: CharacterBody3D, _stamina: Stami
 		body.velocity.z = move_toward(body.velocity.z, move_dir.z * max_air_speed, air_acceleration * delta)
 	if _stamina:
 		_stamina.recover(stamina_recover_per_sec * 0.25 * delta)
+
+	body.move_and_slide()

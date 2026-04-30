@@ -49,6 +49,7 @@ func gather_proposals(current_mode: int, _intents: Intents, services: Array[Base
 	return [TransitionProposal.new(LocomotionState.ID.STAIRS, TransitionProposal.Priority.FORCED)]
 
 func tick(delta: float, intents: Intents, body: CharacterBody3D, stamina: StaminaComponent, services: Array[BaseService]) -> void:
+	apply_locomotion_rotation(body, intents, delta)
 	var stairs: StairsService = _get_service(services, StairsService) as StairsService
 	var stair: Stairs = stairs.get_active_stair() if stairs else null
 	if stair == null:
@@ -130,3 +131,5 @@ func tick(delta: float, intents: Intents, body: CharacterBody3D, stamina: Stamin
 	else:
 		## Lateral / idle / on-tread / small gap — floor_snap_length holds Y.
 		body.velocity.y = 0.0
+
+	body.move_and_slide()

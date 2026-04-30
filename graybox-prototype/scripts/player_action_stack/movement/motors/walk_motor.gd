@@ -13,6 +13,7 @@ func gather_proposals(_current_mode: int, _intents: Intents, services: Array[Bas
 	return []
 
 func tick(_delta: float, intents: Intents, body: CharacterBody3D, stamina: StaminaComponent, _services: Array[BaseService]) -> void:
+	apply_locomotion_rotation(body, intents, _delta)
 	var move_dir: Vector3 = Vector3(intents.move_dir.x, 0, intents.move_dir.y).normalized()
 	if move_dir != Vector3.ZERO:
 		body.velocity.x = move_toward(body.velocity.x, move_dir.x * max_speed, acceleration * _delta)
@@ -28,3 +29,5 @@ func tick(_delta: float, intents: Intents, body: CharacterBody3D, stamina: Stami
 
 	if stamina:
 		stamina.recover(stamina_recover_per_sec * _delta)
+
+	body.move_and_slide()

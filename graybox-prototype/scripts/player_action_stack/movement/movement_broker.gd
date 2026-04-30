@@ -19,6 +19,7 @@ var _loco_state: LocomotionState
 
 ## Public API for state access
 func get_current_mode() -> int:
+	assert(_loco_state != null, "LocomotionState not initialized")
 	return _loco_state.get_active_mode() if _loco_state else LocomotionState.ID.FALL
 
 var _current_mode: int:
@@ -56,6 +57,9 @@ func _ready() -> void:
 	for m in _motors.values():
 		if m is BaseMotor:
 			m._brain = self
+			
+	if has_node("../VisualsPivot"):
+		get_node("../VisualsPivot").set_process(true)
 
 func _guess_state_id(motor_name: String) -> int:
 	match motor_name:
@@ -111,29 +115,29 @@ func _physics_process(delta: float) -> void:
 		if active_motor is BaseMotor:
 			active_motor.tick(delta, intents, _body, _stamina, _services)
 
-	# Smoothly rotate Body (except surface interactions)
-	var restricted: Array = [
-		LocomotionState.ID.AUTO_VAULT,
-		LocomotionState.ID.CLIMB,
-		LocomotionState.ID.MANTLE,
-		LocomotionState.ID.LADDER,
-		LocomotionState.ID.SNEAK,
-		LocomotionState.ID.WALL_JUMP
-	]
-	
-	if not _current_mode in restricted:
-		var intended_dir: Vector2 = intents.move_dir
-		if intended_dir.length_squared() > 0.01:
-			var target_dir: Vector3 = Vector3(intended_dir.x, 0, intended_dir.y).normalized()
-			var target_basis: Basis = Basis.looking_at(target_dir, Vector3.UP)
-			_body.basis = _body.basis.slerp(target_basis, 15.0 * delta)
-
-	_body.move_and_slide()
-
 	if OS.is_debug_build() and has_node("/root/DebugOverlay"):
 		var m_name: String = LocomotionState.ID.keys()[_current_mode]
 		var spd: float = Vector2(_body.velocity.x, _body.velocity.z).length()
 		var stamina_cur: float = _stamina.get_current() if _stamina else 0.0
 		var stamina_max: float = _stamina.get_max() if _stamina else 100.0
 		var stamina_pct: int = roundi(stamina_cur / stamina_max * 100.0)
-		get_node("/root/DebugOverlay").push(1, {"state": m_name, "speed": snappedf(spd, 0.1), "vel_y": snappedf(_body.velocity.y, 0.1), "stamina": "%d%%" % stamina_pct})
+		
+		# Collect active intents for debugging
+		var active_intents: Array[String] = []
+		if intents.wants_jump: active_intents.append("Jump")
+		if intents.wants_sprint: active_intents.append("Sprint")
+		if intents.wants_sneak: active_intents.append("Sneak")
+		if intents.wants_climb: active_intents.append("Climb")
+		if intents.wants_mantle: active_intents.append("Mantle")
+		if intents.wants_vault: active_intents.append("Vault")
+		if intents.wants_glide: active_intents.append("Glide")
+		
+		var intents_str: String = " ".join(active_intents.map(func(s): return "[" + s + "]"))
+		
+		get_node("/root/DebugOverlay").push(1, {
+			"state": m_name, 
+			"speed": snappedf(spd, 0.1), 
+			"vel_y": snappedf(_body.velocity.y, 0.1), 
+			"stamina": "%d%%" % stamina_pct,
+			"intents": intents_str if intents_str != "" else "None"
+		})

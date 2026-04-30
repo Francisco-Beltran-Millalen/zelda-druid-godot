@@ -34,6 +34,7 @@ func on_deactivate(body: CharacterBody3D) -> void:
 		shape_node.position.y = _original_y_pos
 
 func tick(delta: float, intents: Intents, body: CharacterBody3D, stamina: StaminaComponent, _services: Array[BaseService]) -> void:
+	apply_locomotion_rotation(body, intents, delta)
 	var move_dir: Vector3 = Vector3(intents.move_dir.x, 0, intents.move_dir.y).normalized()
 	
 	if move_dir != Vector3.ZERO:
@@ -52,3 +53,5 @@ func tick(delta: float, intents: Intents, body: CharacterBody3D, stamina: Stamin
 
 	if stamina:
 		stamina.recover(5.0 * delta) # Sneaking is restful
+
+	body.move_and_slide()

@@ -1,5 +1,7 @@
 extends Node
 
+signal mouse_motion_received(relative: Vector2)
+
 @onready var _camera_rig: Node3D = $"../../CameraRig"
 
 func _ready() -> void:
@@ -8,6 +10,9 @@ func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		mouse_motion_received.emit(event.relative)
+		
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)

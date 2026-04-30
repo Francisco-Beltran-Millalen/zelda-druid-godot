@@ -8,7 +8,10 @@ var _target_y_offset: float = 0.0
 
 func _ready() -> void:
 	set_as_top_level(true)
+	set_process(false)
+	set_physics_process(false)
 
+## Explicit loop owner for visual interpolation (re-enabled by MovementBroker).
 func _process(delta: float) -> void:
 	if not is_instance_valid(_body): return
 	
