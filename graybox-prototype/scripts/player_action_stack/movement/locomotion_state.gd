@@ -20,7 +20,8 @@ enum ID {
 	LADDER = 9,
 	GLIDE = 10,
 	SNEAK = 11,
-	WALL_JUMP = 12
+	WALL_JUMP = 12,
+	EDGE_LEAP = 13
 }
 
 var _mode: ID = ID.FALL

@@ -78,9 +78,9 @@ func tick(delta: float, intents: Intents, body: CharacterBody3D, stamina: Stamin
 
 	var lateral_input: float = intents.raw_input.x
 	if ledge:
-		if lateral_input > 0 and not ledge.has_wall_right():
+		if intents.is_climbing_right and not ledge.has_wall_right():
 			lateral_input = 0.0
-		elif lateral_input < 0 and not ledge.has_wall_left():
+		elif intents.is_climbing_left and not ledge.has_wall_left():
 			lateral_input = 0.0
 
 	var right_dir: Vector3 = Vector3.UP.cross(climb_normal).normalized()
@@ -99,7 +99,7 @@ func tick(delta: float, intents: Intents, body: CharacterBody3D, stamina: Stamin
 	body.velocity.z = lateral_vel.z + wall_stick.z
 
 	if ledge:
-		var facts: LedgeFacts = ledge.get_ledge_facts(_brain.get_body_reader())
+		var facts: LedgeFacts = ledge.get_ledge_facts(_broker.get_body_reader())
 		# Clipping to ledge height: hard limit at neck height.
 		# This prevents climbing over the top and forces a Mantle transition.
 		if facts.lip_height != -INF and body.velocity.y > 0:

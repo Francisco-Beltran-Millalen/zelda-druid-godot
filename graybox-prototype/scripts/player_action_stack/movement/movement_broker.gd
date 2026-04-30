@@ -56,7 +56,7 @@ func _ready() -> void:
 	
 	for m in _motors.values():
 		if m is BaseMotor:
-			m._brain = self
+			m._broker = self
 			
 	if has_node("../VisualsPivot"):
 		get_node("../VisualsPivot").set_process(true)
@@ -75,6 +75,7 @@ func _guess_state_id(motor_name: String) -> int:
 		"GlideMotor": return LocomotionState.ID.GLIDE
 		"SneakMotor": return LocomotionState.ID.SNEAK
 		"WallJumpMotor": return LocomotionState.ID.WALL_JUMP
+		"EdgeLeapMotor": return LocomotionState.ID.EDGE_LEAP
 	return LocomotionState.ID.IDLE
 
 func _physics_process(delta: float) -> void:
@@ -134,10 +135,20 @@ func _physics_process(delta: float) -> void:
 		
 		var intents_str: String = " ".join(active_intents.map(func(s): return "[" + s + "]"))
 		
+		# Semantic direction debug
+		var dir_str: String = ""
+		if intents.is_moving_forward: dir_str += "F"
+		if intents.is_moving_back: dir_str += "B"
+		if intents.is_moving_left: dir_str += "L"
+		if intents.is_moving_right: dir_str += "R"
+		if dir_str == "": dir_str = "-"
+		
 		get_node("/root/DebugOverlay").push(1, {
 			"state": m_name, 
 			"speed": snappedf(spd, 0.1), 
 			"vel_y": snappedf(_body.velocity.y, 0.1), 
 			"stamina": "%d%%" % stamina_pct,
+			"wish": dir_str,
+			"str": "%.2f" % intents.input_strength,
 			"intents": intents_str if intents_str != "" else "None"
 		})

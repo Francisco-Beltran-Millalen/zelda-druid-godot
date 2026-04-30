@@ -18,7 +18,7 @@ func gather_proposals(current_mode: int, intents: Intents, services: Array[BaseS
 	var ledge: LedgeService = _get_service(services, LedgeService) as LedgeService
 	
 	if ground != null and ground.is_on_floor() and ledge != null and intents.wants_vault:
-		var facts: LedgeFacts = ledge.get_ledge_facts(_brain.get_body_reader())
+		var facts: LedgeFacts = ledge.get_ledge_facts(_broker.get_body_reader())
 		if facts.is_occupied and facts.landing_height != -INF and facts.landing_height <= facts.detection_range:
 			return [TransitionProposal.new(LocomotionState.ID.AUTO_VAULT, TransitionProposal.Priority.PLAYER_REQUESTED, AUTO_VAULT_WEIGHT)]
 	
@@ -41,7 +41,7 @@ func tick(delta: float, _intents: Intents, body: CharacterBody3D, _stamina: Stam
 		var ledge: LedgeService = _get_service(services, LedgeService) as LedgeService
 		var rise_needed: float = vault_min_rise
 		if ledge != null:
-			var facts: LedgeFacts = ledge.get_ledge_facts(_brain.get_body_reader())
+			var facts: LedgeFacts = ledge.get_ledge_facts(_broker.get_body_reader())
 			if facts.is_occupied:
 				# Target landing height relative to feet + buffer
 				var to_landing: float = facts.landing_height + 0.4 

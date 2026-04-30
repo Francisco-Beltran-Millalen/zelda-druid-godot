@@ -40,7 +40,7 @@ func gather_proposals(current_mode: int, intents: Intents, services: Array[BaseS
 		if not (is_climbing or is_wall_jumping):
 			return []
 			
-		var facts: LedgeFacts = ledge.get_ledge_facts(_brain.get_body_reader())
+		var facts: LedgeFacts = ledge.get_ledge_facts(_broker.get_body_reader())
 		var at_edge: bool = facts.is_at_mantle_edge
 		# Re-introduce height threshold with tolerance for climb ceiling clip (1.33m).
 		# This prevents mantling lower walls.
@@ -48,7 +48,7 @@ func gather_proposals(current_mode: int, intents: Intents, services: Array[BaseS
 		
 		if at_edge and tall_enough:
 			var requesting: bool = intents.wants_mantle
-			if requesting or is_wall_jumping:
+			if requesting or (is_wall_jumping and intents.is_climbing_up):
 				# FORCED (3) weight 10 beats:
 				# - Climb sticky state (OPPORTUNISTIC 2)
 				# - WallJump sticky state (FORCED 3, weight 5)
@@ -91,7 +91,7 @@ func _begin_mantle(body: CharacterBody3D, ledge: LedgeService) -> bool:
 	if ledge == null:
 		return false
 	
-	var facts: LedgeFacts = ledge.get_ledge_facts(_brain.get_body_reader())
+	var facts: LedgeFacts = ledge.get_ledge_facts(_broker.get_body_reader())
 	if facts.target_position == Vector3.ZERO:
 		return false
 

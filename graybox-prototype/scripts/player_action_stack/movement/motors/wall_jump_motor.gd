@@ -43,20 +43,19 @@ func tick(delta: float, intents: Intents, body: CharacterBody3D, stamina: Stamin
 			normal = -body.get_wall_normal() if body.is_on_wall() else body.basis.z
 		
 		var right_dir: Vector3 = Vector3.UP.cross(normal).normalized()
-		var input: Vector2 = intents.raw_input
 		
-		if input.y < -0.5: # Jumping UP
+		if intents.is_climbing_up: # Jumping UP
 			body.velocity = Vector3.UP * jump_up_impulse
 			body.velocity -= normal * 1.0 # Keep contact
-		elif input.y > 0.5: # Jumping AWAY (S)
+		elif intents.is_climbing_down: # Jumping AWAY (S)
 			var away_dir: Vector3 = (normal + Vector3.UP * 0.4).normalized()
 			body.velocity = away_dir * 3.5 + normal * 4.0
-		elif input.x < -0.5: # Jumping LEFT (A)
+		elif intents.is_climbing_left: # Jumping LEFT (A)
 			var left_jump_dir: Vector3 = -right_dir
 			body.velocity = left_jump_dir * (jump_up_impulse * 0.8)
 			body.velocity.y = 0.5 # Minimal vertical
 			body.velocity -= normal * 0.5
-		elif input.x > 0.5: # Jumping RIGHT (D)
+		elif intents.is_climbing_right: # Jumping RIGHT (D)
 			var right_jump_dir: Vector3 = right_dir
 			body.velocity = right_jump_dir * (jump_up_impulse * 0.8)
 			body.velocity.y = 0.5 # Minimal vertical
@@ -72,10 +71,8 @@ func tick(delta: float, intents: Intents, body: CharacterBody3D, stamina: Stamin
 	
 	# Clipping to ledge height
 	if ledge:
-		var facts: LedgeFacts = ledge.get_ledge_facts(_brain.get_body_reader())
+		var facts: LedgeFacts = ledge.get_ledge_facts(_broker.get_body_reader())
 		if facts.lip_height != -INF and body.velocity.y > 0:
-			# facts.lip_height is relative to feet. 
-			# We want to clip body.global_position.y
 			var feet_y: float = body.global_position.y - 1.0 # body_half_height
 			var ledge_global_y: float = feet_y + facts.lip_height
 			var max_y: float = ledge_global_y - 0.33 # ledge_top_offset

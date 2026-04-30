@@ -166,6 +166,8 @@ func get_ledge_facts(body_reader: BodyReader) -> LedgeFacts:
 	facts.is_at_mantle_edge = _is_at_ledge_edge
 	facts.detection_range = vault_detection_range
 	facts.wall_normal = _climb_normal
+	facts.has_wall_left = _has_wall_left
+	facts.has_wall_right = _has_wall_right
 	facts.target_position = _mantle_target_position
 	facts.ledge_point = _mantle_ledge_point
 	

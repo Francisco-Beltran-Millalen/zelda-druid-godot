@@ -2,7 +2,7 @@ class_name BaseMotor
 extends Node
 
 @warning_ignore("unused_private_class_variable")
-var _brain: Node ## Reference to PlayerBrain or similar context provider.
+var _broker: MovementBroker ## Reference to the MovementBroker that ticks this motor.
 
 ## Gathers transition proposals for this motor based on current state and intents.
 func gather_proposals(_current_mode: int, _intents: Intents, _services: Array[BaseService], _stamina: StaminaComponent) -> Array[TransitionProposal]:

@@ -2,6 +2,84 @@
 
 ---
 
+## 2026-04-30: Semantic Intent Refactor & Wall-Jump Fix
+**Problem:** The `MantleMotor` was incorrectly hijacking lateral and backward wall jumps when the player was near a ledge. Additionally, the codebase used raw hardware coordinate checks (e.g., `raw_input.y < -0.5`) which was difficult to read and hardware-dependent.
+**Fix:** Refactored the `Intents` system to use semantic, human-readable getters like `is_climbing_up` and `is_moving_forward`. Updated the `PlayerBrain` to handle hardware translation and populated a discrete `wish_dir`. Updated `MantleMotor`, `ClimbMotor`, and `WallJumpMotor` to use this new API. Enhanced the `DebugOverlay` to visualize semantic intents.
+**Files:**
+- `graybox-prototype/scripts/base/intents.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/player_brain.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/motors/mantle_motor.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/motors/climb_motor.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/motors/wall_jump_motor.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/movement_broker.gd`
+- `graybox-prototype/test/unit/test_intents.gd`
+- `docs/architecture/ARCHITECTURE-MAP.md`
+
+## 2026-04-30: Slice 3 — Tier 1 Unit Tests (Pure Data)
+
+**Problem:** Need for foundational unit tests for pure data classes and basic components to ensure data integrity and boundary logic before moving to more complex integration tests.
+
+**Fix:**
+- Implemented unit tests for `Intents`, `TransitionProposal`, `LedgeFacts`, and `StaminaComponent` using GUT 9.6.0.
+- Adhered to `docs/testing-guidelines.md` patterns: `before_each`/`after_each`, `assert_no_new_orphans()`, and `watch_signals()`.
+- Verified 15/15 tests passing (69 asserts) using the headless runner.
+
+**Files:**
+- `graybox-prototype/test/unit/test_intents.gd`
+- `graybox-prototype/test/unit/test_transition_proposal.gd`
+- `graybox-prototype/test/unit/test_ledge_facts.gd`
+- `graybox-prototype/test/unit/test_stamina_component.gd`
+
+---
+
+## 2026-04-30: Slice 2 — Testing Scaffold (GUT 9.6.0)
+
+**Problem:** No automated test infrastructure existed. GUT was documented in `workflow/stages/deferred/testing/` but never installed.
+
+**Fix:**
+- Downloaded and installed GUT 9.6.0 to `graybox-prototype/addons/gut/`.
+- Enabled the plugin via `[editor_plugins]` in `project.godot`.
+- Created `graybox-prototype/test/unit/` and `graybox-prototype/test/integration/` directories.
+- Wrote `test/unit/test_gut_setup.gd` smoke test — verified 1/1 passing headless.
+- Promoted `workflow/stages/deferred/testing/` → `workflow/stages/testing/`.
+- Wrote `docs/testing-guidelines.md` with the four-tier structure, assert vs push_error policy, template, and GUT assertions quick reference.
+
+**Headless run command:** `godot --headless -s addons/gut/gut_cmdln.gd -gdir=res://test/unit -gexit` (run from `graybox-prototype/`)
+
+**Files:**
+- `graybox-prototype/addons/gut/` (new)
+- `graybox-prototype/project.godot` (plugin entry added)
+- `graybox-prototype/test/unit/test_gut_setup.gd` (new)
+- `graybox-prototype/test/unit/` (new)
+- `graybox-prototype/test/integration/` (new)
+- `docs/testing-guidelines.md` (new)
+- `workflow/stages/testing/` (promoted from deferred)
+
+---
+
+## 2026-04-30: Slice 1 — Architectural Drift Fixes
+
+**Problem:** A cold audit against the Architecture Constitution and Architecture Map found three drift items: a P5 implicit-tick violation in CameraRig, a misleading `_brain` field on BaseMotor (actually injected with the Broker), and `PlayerActionDebugContext` missing from the Architecture Map. G5 also lacked the GDScript-specific assert vs push_error guidance.
+
+**Fix:**
+- **1A (P5):** Added `set_process(false)` to `CameraRig._ready()`. `MovementBroker` now explicitly enables it on `_ready`, mirroring the existing `VisualsPivot` pattern.
+- **1B (Naming):** Renamed `BaseMotor._brain: Node` → `_broker: MovementBroker`. Updated the injection site in `MovementBroker._ready()` and all six call sites in `auto_vault_motor`, `climb_motor`, `mantle_motor`, and `wall_jump_motor`. The Broker layer is now explicit in the type system.
+- **1C (Map drift):** Added `PlayerActionDebugContext` row to `docs/architecture/ARCHITECTURE-MAP.md` Section 1.
+- **1D (Constitution G5 amendment):** Clarified G5 to distinguish `assert()` (programmer-error invariants, stripped from release) from `push_error()` + early-return (runtime-reachable failures, survives release).
+
+**Files:**
+- `graybox-prototype/scripts/player_action_stack/camera/camera_rig.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/movement_broker.gd`
+- `graybox-prototype/scripts/base/base_motor.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/motors/auto_vault_motor.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/motors/climb_motor.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/motors/mantle_motor.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/motors/wall_jump_motor.gd`
+- `docs/architecture/ARCHITECTURE-MAP.md`
+- `docs/architecture/CONSTITUTION.md`
+
+---
+
 ## 2026-04-29: Mantle Priority Refinement & Intent Debugging
 
 **Problem:** The Mantle mechanic was unreliable: the manual trigger often failed, it couldn't reliably interrupt the sticky Climb state, and it suffered from regressions like automatic triggering and low-wall activation. Additionally, debugging input was difficult without visual feedback.

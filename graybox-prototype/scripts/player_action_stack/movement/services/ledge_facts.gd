@@ -10,5 +10,7 @@ var is_occupied: bool = false        ## True if landing surface is clear/detecte
 var is_at_mantle_edge: bool = false  ## True if player is at the correct height to pull up.
 var detection_range: float = 1.4     ## The service's current vault detection limit.
 var wall_normal: Vector3 = Vector3.ZERO
+var has_wall_left: bool = false
+var has_wall_right: bool = false
 var target_position: Vector3 = Vector3.ZERO ## Pre-calculated mantle/vault landing spot.
 var ledge_point: Vector3 = Vector3.ZERO

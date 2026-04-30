@@ -24,6 +24,7 @@
 [ext_resource type="Script" path="res://scripts/player_action_stack/movement/motors/glide_motor.gd" id="21_glide_motor"]
 [ext_resource type="Script" path="res://scripts/player_action_stack/movement/motors/sneak_motor.gd" id="22_sneak_motor"]
 [ext_resource type="Script" path="res://scripts/player_action_stack/movement/motors/wall_jump_motor.gd" id="23_wall_jump"]
+[ext_resource type="Script" path="res://scripts/player_action_stack/movement/motors/edge_leap_motor.gd" id="24_edge_leap"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_cbody"]
 
@@ -186,7 +187,8 @@ motor_map = {
 9: NodePath("LadderMotor"),
 10: NodePath("GlideMotor"),
 11: NodePath("SneakMotor"),
-12: NodePath("WallJumpMotor")
+12: NodePath("WallJumpMotor"),
+13: NodePath("EdgeLeapMotor")
 }
 
 [node name="WalkMotor" type="Node" parent="Player/EntityController/MovementBroker" unique_id=1891427688]
@@ -209,6 +211,9 @@ script = ExtResource("12_climb")
 
 [node name="WallJumpMotor" type="Node" parent="Player/EntityController/MovementBroker" unique_id=2088453946]
 script = ExtResource("23_wall_jump")
+
+[node name="EdgeLeapMotor" type="Node" parent="Player/EntityController/MovementBroker" unique_id=1900000006]
+script = ExtResource("24_edge_leap")
 
 [node name="AutoVaultMotor" type="Node" parent="Player/EntityController/MovementBroker" unique_id=2009426734]
 script = ExtResource("11_vault")
