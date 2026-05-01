@@ -143,12 +143,20 @@ func _physics_process(delta: float) -> void:
 		if intents.is_moving_right: dir_str += "R"
 		if dir_str == "": dir_str = "-"
 		
+		var v_status: String = " (V)" if _ledge_service and _ledge_service.get_ledge_facts(_body_reader).is_vaultable else ""
+		
+		var ledge_debug: String = ""
+		if _ledge_service:
+			var facts = _ledge_service.get_ledge_facts(_body_reader)
+			ledge_debug = facts.debug_text
+		
 		get_node("/root/DebugOverlay").push(1, {
-			"state": m_name, 
+			"state": m_name + v_status, 
 			"speed": snappedf(spd, 0.1), 
 			"vel_y": snappedf(_body.velocity.y, 0.1), 
 			"stamina": "%d%%" % stamina_pct,
 			"wish": dir_str,
 			"str": "%.2f" % intents.input_strength,
-			"intents": intents_str if intents_str != "" else "None"
+			"intents": intents_str if intents_str != "" else "None",
+			"ledge": ledge_debug
 		})

@@ -20,12 +20,18 @@ func test_default_values():
 	assert_eq(subject.wall_normal, Vector3.ZERO, "wall_normal should default to ZERO")
 	assert_eq(subject.target_position, Vector3.ZERO, "target_position should default to ZERO")
 	assert_eq(subject.ledge_point, Vector3.ZERO, "ledge_point should default to ZERO")
+	assert_eq(subject.vault_target_position, Vector3.ZERO, "vault_target_position should default to ZERO")
+	assert_false(subject.is_vaultable, "is_vaultable should default to false")
 
 func test_field_assignment():
 	subject.lip_height = 1.2
 	subject.is_occupied = true
 	subject.wall_normal = Vector3.FORWARD
+	subject.vault_target_position = Vector3(0, 1, 2)
+	subject.is_vaultable = true
 	
 	assert_eq(subject.lip_height, 1.2)
 	assert_true(subject.is_occupied)
 	assert_eq(subject.wall_normal, Vector3.FORWARD)
+	assert_eq(subject.vault_target_position, Vector3(0, 1, 2))
+	assert_true(subject.is_vaultable)

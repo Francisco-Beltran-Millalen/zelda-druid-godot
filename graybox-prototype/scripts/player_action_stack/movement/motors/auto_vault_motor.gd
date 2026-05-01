@@ -2,73 +2,84 @@ class_name AutoVaultMotor
 extends BaseMotor
 
 const AUTO_VAULT_WEIGHT: int = 20
+const MIN_VAULT_SPEED: float = 0.01
+const MIN_VAULT_DURATION: float = 0.1
 
-@export var vault_clearance: float = 0.25
-@export var vault_min_rise: float = 0.3
+@export var vault_speed: float = 5.0
+@export var vault_arc_height: float = 0.4
 
-var _rising: bool = false
-var _impulse_applied: bool = false
+var _is_vaulting: bool = false
 var _just_activated: bool = false
+var _elapsed: float = 0.0
+var _duration: float = MIN_VAULT_DURATION
+var _start_position: Vector3 = Vector3.ZERO
+var _target_position: Vector3 = Vector3.ZERO
 
 func gather_proposals(current_mode: int, intents: Intents, services: Array[BaseService], _stamina: StaminaComponent) -> Array[TransitionProposal]:
-	if _rising or (current_mode == LocomotionState.ID.AUTO_VAULT and _just_activated):
+	# Sticky state: if we are already vaulting, we MUST continue until tick() finishes.
+	if current_mode == LocomotionState.ID.AUTO_VAULT and (_is_vaulting or _just_activated):
 		return [TransitionProposal.new(LocomotionState.ID.AUTO_VAULT, TransitionProposal.Priority.FORCED, AUTO_VAULT_WEIGHT)]
 	
 	var ground: GroundService = _get_service(services, GroundService) as GroundService
 	var ledge: LedgeService = _get_service(services, LedgeService) as LedgeService
 	
-	if ground != null and ground.is_on_floor() and ledge != null and intents.wants_vault:
+	if ground != null and ground.is_on_floor() and ledge != null:
 		var facts: LedgeFacts = ledge.get_ledge_facts(_broker.get_body_reader())
-		if facts.is_occupied and facts.landing_height != -INF and facts.landing_height <= facts.detection_range:
+		# Auto-vault triggers if we press the vault key while facing a vaultable object
+		if facts.is_vaultable and intents.wants_vault:
 			return [TransitionProposal.new(LocomotionState.ID.AUTO_VAULT, TransitionProposal.Priority.PLAYER_REQUESTED, AUTO_VAULT_WEIGHT)]
 	
 	return []
 
 func on_activate(_body: CharacterBody3D) -> void:
-	_rising = true
+	_is_vaulting = false
 	_just_activated = true
-	_impulse_applied = false
+	_elapsed = 0.0
 
 func on_deactivate(_body: CharacterBody3D) -> void:
-	_rising = false
-	_impulse_applied = false
+	_is_vaulting = false
+	_elapsed = 0.0
 
 func tick(delta: float, _intents: Intents, body: CharacterBody3D, _stamina: StaminaComponent, services: Array[BaseService]) -> void:
 	_just_activated = false
-	var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
-
-	if not _impulse_applied:
-		var ledge: LedgeService = _get_service(services, LedgeService) as LedgeService
-		var rise_needed: float = vault_min_rise
-		if ledge != null:
-			var facts: LedgeFacts = ledge.get_ledge_facts(_broker.get_body_reader())
-			if facts.is_occupied:
-				# Target landing height relative to feet + buffer
-				var to_landing: float = facts.landing_height + 0.4 
-				rise_needed = maxf(to_landing, vault_min_rise)
-		
-		# Strength multiplier: 1.2x ensures we clear the height even with physics friction
-		body.velocity.y = sqrt(2.0 * gravity * rise_needed) * 1.2
-		
-		# Inject forward momentum so the vault feels "strong"
-		var facing: Vector3 = -body.global_transform.basis.z
-		facing.y = 0
-		if facing.length_squared() > 0.001:
-			facing = facing.normalized()
-			var current_h_vel: Vector3 = Vector3(body.velocity.x, 0, body.velocity.z)
-			var min_vault_speed: float = 5.0
-			if current_h_vel.length() < min_vault_speed:
-				body.velocity.x = facing.x * min_vault_speed
-				body.velocity.z = facing.z * min_vault_speed
-		
-		_impulse_applied = true
+	var ledge: LedgeService = _get_service(services, LedgeService) as LedgeService
+	
+	if not _is_vaulting and not _begin_vault(body, ledge):
+		# Fallback if vault cannot start
+		_is_vaulting = false
 		return
 
-	# Maintain trajectory
-	body.velocity.y -= gravity * delta
+	_elapsed = minf(_elapsed + delta, _duration)
+	var raw_progress: float = _elapsed / _duration
+	# Quadratic ease-in-out for smooth movement
+	var eased_progress: float = smoothstep(0.0, 1.0, raw_progress)
+	
+	var next_position: Vector3 = _start_position.lerp(_target_position, eased_progress)
+	# Add arc height
+	next_position.y += sin(raw_progress * PI) * vault_arc_height
 
+	body.global_position = next_position
+	body.velocity = Vector3.ZERO
+	# Move and slide handles collisions during the lerp if we hit something unexpected
 	body.move_and_slide()
 
-	if body.velocity.y <= 0.0 or body.is_on_floor():
+	if raw_progress >= 1.0:
+		body.global_position = _target_position
+		_is_vaulting = false
 
-		_rising = false
+func _begin_vault(body: CharacterBody3D, ledge: LedgeService) -> bool:
+	if ledge == null:
+		return false
+	
+	var facts: LedgeFacts = ledge.get_ledge_facts(_broker.get_body_reader())
+	if facts.vault_target_position == Vector3.ZERO:
+		return false
+
+	_start_position = body.global_position
+	_target_position = facts.vault_target_position
+
+	var distance: float = _start_position.distance_to(_target_position)
+	_duration = maxf(distance / maxf(vault_speed, MIN_VAULT_SPEED), MIN_VAULT_DURATION)
+	_elapsed = 0.0
+	_is_vaulting = true
+	return true

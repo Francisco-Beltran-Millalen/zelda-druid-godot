@@ -100,15 +100,21 @@ func tick(delta: float, intents: Intents, body: CharacterBody3D, stamina: Stamin
 
 	if ledge:
 		var facts: LedgeFacts = ledge.get_ledge_facts(_broker.get_body_reader())
-		# Clipping to ledge height: hard limit at neck height.
+		# Clipping to ledge height: soft limit at neck height.
 		# This prevents climbing over the top and forces a Mantle transition.
 		if facts.lip_height != -INF and body.velocity.y > 0:
 			var feet_y: float = body.global_position.y - 1.0 # body_half_height
 			var ledge_global_y: float = feet_y + facts.lip_height
 			var max_y: float = ledge_global_y - ledge_top_offset
+			
 			if body.global_position.y >= max_y:
-				body.global_position.y = max_y
-				body.velocity.y = 0
+				body.velocity.y = 0.0
+				body.global_position.y = max_y # Final micro-correction just in case of float drift
+			else:
+				var distance_to_top: float = max_y - body.global_position.y
+				var max_safe_vel: float = distance_to_top / delta
+				if body.velocity.y > max_safe_vel:
+					body.velocity.y = max_safe_vel
 				
 	body.move_and_slide()
 

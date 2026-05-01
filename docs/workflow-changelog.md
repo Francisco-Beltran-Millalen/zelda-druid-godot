@@ -2,6 +2,21 @@
 
 ---
 
+## 2026-04-30: Auto-Vault Refactor and Climb Vibration Fix
+
+**Problem:** Auto-vault was triggering inappropriately (e.g., on flat ground, small stairs, or walking into walls at an angle) while missing valid low obstacles like the wide rail. Additionally, reaching the top of a climbable wall caused the player to violently vibrate.
+
+**Fix:** Refactored `LedgeService` to implement a "Step-Up" vault paradigm. Standardized all horizontal profiling casts to `ShapeCast3D` with a `0.1m` radius for uniform detection regardless of approach angle. Adjusted vertical detection casts to clear the floor, added a `vault_min_height` check, and filtered out walkable slopes by checking collision normals. Fixed `ClimbMotor` vibration by replacing the hard position teleport with a soft velocity clamp based on distance to the ledge top. Spawned the player slightly higher in `main.tscn` to ensure a clean physics initialization.
+
+**Files:**
+- `graybox-prototype/scripts/player_action_stack/movement/services/ledge_service.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/services/ledge_facts.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/motors/auto_vault_motor.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/motors/climb_motor.gd`
+- `graybox-prototype/scripts/player_action_stack/movement/movement_broker.gd`
+- `graybox-prototype/test/unit/test_ledge_facts.gd`
+- `graybox-prototype/scenes/main.tscn`
+
 ## 2026-04-30: Fix Wall-Sucking and Optimize LedgeService Casts
 
 **Problem:** Two related issues in `LedgeService` / `ClimbMotor`:
