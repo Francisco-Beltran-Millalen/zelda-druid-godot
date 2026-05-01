@@ -30,7 +30,11 @@ var _is_vaultable: bool = false
 var _mantle_ledge_point: Vector3 = Vector3.ZERO
 var _mantle_target_position: Vector3 = Vector3.ZERO
 var _is_at_ledge_edge: bool = false
+var _has_head_hit: bool = false
 var _debug_text: String = ""
+var _lip_height: float = 0.0
+var _landing_height: float = 0.0
+var _is_occupied: bool = false
 
 var _down_cast: ShapeCast3D
 var _vault_down_cast: ShapeCast3D
@@ -128,9 +132,17 @@ func update_facts(body_reader: BodyReader) -> void:
 	_detect_vault(pos, facing, hits, feet_y)
 	_detect_mantle(pos, feet_y)
 
+	var knee_hit: bool = hits[1]
 	var waist_hit: bool = hits[2]
 	var head_hit: bool = hits[5]
-	_detect_climb(facing, waist_hit, head_hit, pos)
+	_has_head_hit = head_hit
+	_detect_climb(facing, knee_hit, waist_hit, head_hit, pos)
+	
+	if _down_cast.is_colliding():
+		_lip_height = _down_cast.get_collision_point(0).y - feet_y
+	if _vault_landing_cast.is_colliding():
+		_landing_height = _vault_landing_cast.get_collision_point(0).y - feet_y
+		_is_occupied = true
 
 func _reset_facts() -> void:
 	_can_climb = false
@@ -140,7 +152,11 @@ func _reset_facts() -> void:
 	_mantle_ledge_point = Vector3.ZERO
 	_mantle_target_position = Vector3.ZERO
 	_is_at_ledge_edge = false
+	_has_head_hit = false
 	_debug_text = ""
+	_lip_height = 0.0
+	_landing_height = 0.0
+	_is_occupied = false
 
 func _detect_vault(pos: Vector3, facing: Vector3, hits: Array[bool], feet_y: float) -> void:
 	# Ankle(0), Knee(1), Waist(2), Chest(3) hits vs Limit(4) and Head(5) miss
@@ -180,12 +196,12 @@ func _detect_mantle(pos: Vector3, feet_y: float) -> void:
 			_is_at_ledge_edge = _is_at_mantle_edge(pos, down_point)
 			_update_mantle_target(_h_casts[5].target_position.normalized(), pos) # Use head cast facing
 
-func _detect_climb(facing: Vector3, waist_hit: bool, head_hit: bool, pos: Vector3) -> void:
+func _detect_climb(facing: Vector3, knee_hit: bool, waist_hit: bool, head_hit: bool, pos: Vector3) -> void:
 	if waist_hit:
 		var normal: Vector3 = _h_casts[2].get_collision_normal(0)
 		if rad_to_deg(facing.angle_to(-normal)) <= climb_wall_angle_max_deg:
 			_climb_normal = normal
-			if head_hit or _mantle_ledge_point != Vector3.ZERO:
+			if knee_hit and head_hit:
 				_can_climb = true
 				_update_lateral_walls(pos)
 
@@ -200,14 +216,11 @@ func _update_lateral_walls(pos: Vector3) -> void:
 	_has_wall_left  = _left_cast.is_colliding()
 	_has_wall_right = _right_cast.is_colliding()
 
-func get_ledge_facts(body_reader: BodyReader) -> LedgeFacts:
+func get_ledge_facts() -> LedgeFacts:
 	var facts: LedgeFacts = LedgeFacts.new()
-	var feet_y: float = body_reader.get_global_position().y - vault_body_half_height
-	if _down_cast.is_colliding():
-		facts.lip_height = _down_cast.get_collision_point(0).y - feet_y
-	if _vault_landing_cast.is_colliding():
-		facts.landing_height = _vault_landing_cast.get_collision_point(0).y - feet_y
-		facts.is_occupied = true
+	facts.lip_height = _lip_height
+	facts.landing_height = _landing_height
+	facts.is_occupied = _is_occupied
 	facts.is_at_mantle_edge = _is_at_ledge_edge
 	facts.detection_range = vault_detection_range
 	facts.wall_normal = _climb_normal
@@ -215,6 +228,7 @@ func get_ledge_facts(body_reader: BodyReader) -> LedgeFacts:
 	facts.has_wall_right = _has_wall_right
 	facts.target_position = _mantle_target_position
 	facts.ledge_point = _mantle_ledge_point
+	facts.has_head_hit = _has_head_hit
 	facts.vault_target_position = _vault_target_position
 	facts.is_vaultable = _is_vaultable
 	facts.debug_text = _debug_text
