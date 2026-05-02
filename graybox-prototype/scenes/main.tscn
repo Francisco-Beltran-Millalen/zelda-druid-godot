@@ -26,6 +26,9 @@
 [ext_resource type="Script" path="res://scripts/player_action_stack/movement/motors/wall_jump_motor.gd" id="23_wall_jump"]
 [ext_resource type="Script" path="res://scripts/player_action_stack/movement/motors/edge_leap_motor.gd" id="24_edge_leap"]
 
+[ext_resource type="Script" path="res://scripts/player_action_stack/movement/climb_toggle_component.gd" id="25_climb_toggle"]
+[ext_resource type="Script" path="res://scripts/player_action_stack/movement/movement_broker_debug_reporter.gd" id="26_broker_debug"]
+
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_cbody"]
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_vmesh"]
@@ -174,6 +177,9 @@ mesh = SubResource("CapsuleMesh_vmesh")
 [node name="PlayerBrain" type="Node" parent="Player/EntityController" unique_id=1686599989]
 script = ExtResource("2_brain")
 
+[node name="ClimbToggleComponent" type="Node" parent="Player/EntityController" unique_id=1686599990]
+script = ExtResource("25_climb_toggle")
+
 [node name="MovementBroker" type="Node" parent="Player/EntityController" unique_id=1172426050]
 script = ExtResource("3_broker")
 motor_map = {
@@ -191,6 +197,9 @@ motor_map = {
 12: NodePath("WallJumpMotor"),
 13: NodePath("EdgeLeapMotor")
 }
+
+[node name="MovementBrokerDebugReporter" type="Node" parent="Player/EntityController/MovementBroker" unique_id=1686599991]
+script = ExtResource("26_broker_debug")
 
 [node name="WalkMotor" type="Node" parent="Player/EntityController/MovementBroker" unique_id=1891427688]
 script = ExtResource("7_walk")

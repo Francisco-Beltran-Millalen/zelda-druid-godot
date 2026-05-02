@@ -23,7 +23,7 @@ class MockLedgeService extends LedgeService:
 	var mock_facts: LedgeFacts = LedgeFacts.new()
 	var mock_normal: Vector3 = Vector3.BACK
 	
-	func get_ledge_facts(_br) -> LedgeFacts:
+	func get_ledge_facts() -> LedgeFacts:
 		return mock_facts
 	
 	func get_climb_normal() -> Vector3:

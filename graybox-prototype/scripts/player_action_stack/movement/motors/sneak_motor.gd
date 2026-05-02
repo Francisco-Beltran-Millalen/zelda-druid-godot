@@ -11,6 +11,10 @@ extends BaseMotor
 var _original_height: float = 2.0
 var _original_y_pos: float = 0.0
 
+const MOVE_DIR_THRESHOLD_SQ: float = 0.01
+const ROTATION_SLERP_SPEED: float = 10.0
+const SNEAK_STAMINA_RECOVER_RATE: float = 5.0
+
 func gather_proposals(_current_mode: int, intents: Intents, services: Array[BaseService], _stamina: StaminaComponent) -> Array[TransitionProposal]:
 	var ground: GroundService = _get_service(services, GroundService) as GroundService
 	if ground != null and ground.is_on_floor() and intents.wants_sneak:
@@ -47,11 +51,11 @@ func tick(delta: float, intents: Intents, body: CharacterBody3D, stamina: Stamin
 	body.velocity.y = 0.0 # Stay grounded
 	
 	# Rotate body to face movement (duplicated from broker but sneak might want custom rotation speed)
-	if move_dir.length_squared() > 0.01:
+	if move_dir.length_squared() > MOVE_DIR_THRESHOLD_SQ:
 		var target_basis: Basis = Basis.looking_at(move_dir, Vector3.UP)
-		body.basis = body.basis.slerp(target_basis, 10.0 * delta)
+		body.basis = body.basis.slerp(target_basis, ROTATION_SLERP_SPEED * delta)
 
 	if stamina:
-		stamina.recover(5.0 * delta) # Sneaking is restful
+		stamina.recover(SNEAK_STAMINA_RECOVER_RATE * delta) # Sneaking is restful
 
 	body.move_and_slide()

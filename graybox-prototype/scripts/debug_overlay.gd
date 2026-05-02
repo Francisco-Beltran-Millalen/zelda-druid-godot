@@ -1,5 +1,7 @@
 extends Node
 
+signal visibility_changed(visible: bool)
+
 var panel_visible: bool = true
 var _contexts: Dictionary = {}
 
@@ -9,6 +11,7 @@ func _ready() -> void:
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_F1:
 		panel_visible = !panel_visible
+		visibility_changed.emit(panel_visible)
 		_update_visibility()
 
 func register_context(context: BaseDebugContext) -> void:

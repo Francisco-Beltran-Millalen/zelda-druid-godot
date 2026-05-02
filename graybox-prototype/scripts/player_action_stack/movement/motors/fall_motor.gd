@@ -8,6 +8,8 @@ extends BaseMotor
 @export var jump_cut_velocity: float = 2.0
 @export var stamina_recover_per_sec: float = 15.0
 
+const FALL_STAMINA_RECOVER_FRACTION: float = 0.25
+
 func gather_proposals(_current_mode: int, _intents: Intents, services: Array[BaseService], _stamina: StaminaComponent) -> Array[TransitionProposal]:
 	var ground: GroundService = _get_service(services, GroundService) as GroundService
 	if ground != null and not ground.is_on_floor():
@@ -33,6 +35,6 @@ func tick(delta: float, intents: Intents, body: CharacterBody3D, _stamina: Stami
 		body.velocity.x = move_toward(body.velocity.x, move_dir.x * max_air_speed, air_acceleration * delta)
 		body.velocity.z = move_toward(body.velocity.z, move_dir.z * max_air_speed, air_acceleration * delta)
 	if _stamina:
-		_stamina.recover(stamina_recover_per_sec * 0.25 * delta)
+		_stamina.recover(stamina_recover_per_sec * FALL_STAMINA_RECOVER_FRACTION * delta)
 
 	body.move_and_slide()

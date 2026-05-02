@@ -5,6 +5,7 @@ const CAPSULE_HALF_HEIGHT := 1.0  ## CapsuleShape3D total height 2.0 / 2
 const CAPSULE_RADIUS := 0.5       ## CapsuleShape3D default radius — front of body along slope axis
 const LOOKAHEAD_MARGIN := 0.1     ## Extra horizontal lookahead beyond the capsule front — fires the snap a frame earlier so high-speed (sprint) ascents don't graze the upper-tread corner
 const DESCEND_TRAIL := 0.49       ## Trailing-edge sample distance (behind motion) for descent — slightly less than CAPSULE_RADIUS so the sampled tread transitions exactly when the capsule fully clears the upper tread (no rear-half embedding)
+const INPUT_THRESHOLD_SQ := 0.01  ## Minimum length-squared of world input to count as intentional movement
 
 @export var ascend_speed: float = 3.5    ## Slower than walk_speed (5.0) — feels deliberate
 @export var descend_speed: float = 4.5
@@ -72,7 +73,7 @@ func tick(delta: float, intents: Intents, body: CharacterBody3D, stamina: Stamin
 	var target_h: Vector3 = horiz_axis * along * speed + lateral_axis * lateral * speed * lateral_factor
 
 	## Higher decel than accel — kills the slippery feel on descent when input releases.
-	var has_input: bool = world_input.length_squared() > 0.01
+	var has_input: bool = world_input.length_squared() > INPUT_THRESHOLD_SQ
 	var rate: float = acceleration if has_input else friction
 	body.velocity.x = move_toward(body.velocity.x, target_h.x, rate * delta)
 	body.velocity.z = move_toward(body.velocity.z, target_h.z, rate * delta)

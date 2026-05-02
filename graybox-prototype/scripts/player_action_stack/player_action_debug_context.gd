@@ -18,11 +18,16 @@ func _ready() -> void:
 	_label.add_theme_font_size_override("font_size", 18)
 	_label.add_theme_color_override("font_color", Color.YELLOW)
 	_canvas.add_child(_label)
-	set_process(true)
+	if has_node("/root/DebugOverlay"):
+		var overlay = get_node("/root/DebugOverlay")
+		if overlay.has_signal("visibility_changed"):
+			overlay.visibility_changed.connect(_on_visibility_changed)
+			if _canvas:
+				_canvas.visible = overlay.panel_visible
 
-func _process(_delta: float) -> void:
-	if has_node("/root/DebugOverlay") and _canvas:
-		_canvas.visible = get_node("/root/DebugOverlay").panel_visible
+func _on_visibility_changed(is_visible: bool) -> void:
+	if _canvas:
+		_canvas.visible = is_visible
 
 func clear() -> void:
 	if _label:

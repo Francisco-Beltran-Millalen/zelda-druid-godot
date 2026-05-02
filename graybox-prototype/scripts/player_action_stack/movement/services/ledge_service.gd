@@ -2,6 +2,15 @@ class_name LedgeService
 extends BaseService
 
 const MIN_DIRECTION_LENGTH_SQUARED: float = 0.001
+const H_CAST_Y_OFFSETS: Array[float] = [-0.8, -0.6, -0.2, 0.2, 0.4, 0.6]  ## Ankle → Head profiling heights
+const DOWN_CAST_MARGIN: float = 0.1          ## Extra height margin added above mantle_max_height for the down-cast origin
+const DOWN_CAST_FORWARD_OFFSET: float = 1.0  ## Forward distance of the down-cast from the body
+const FORWARD_CAST_SPHERE_RADIUS: float = 0.1 ## Sphere radius for all forward and down shape-casts
+const LATERAL_CAST_Y_OFFSET: float = 0.5    ## Y offset for left/right wall-probe raycasts
+const FORWARD_SAMPLE_OFFSET: float = 1.0    ## Forward distance used to position the down-cast each frame in update_facts
+const VAULT_DIST_MARGIN: float = 0.2        ## Extra forward margin added to min_dist when positioning the vault down-cast
+const STEEP_FACE_NORMAL_Y_MAX: float = 0.75 ## Max Y component of a collision normal to count as a steep (vaultable) face
+const VAULT_FORWARD_RADIUS_MULT: float = 1.5 ## Multiplier on mantle_body_radius for forward vault target placement
 
 @export var vault_detection_range: float = 1.4
 @export var vault_min_height: float = 0.3
@@ -44,7 +53,7 @@ var _right_cast: RayCast3D
 
 # Horizontal profiling casts (Ankle to Head)
 var _h_casts: Array[ShapeCast3D] = []
-var _h_offsets: Array[float] = [-0.8, -0.6, -0.2, 0.2, 0.4, 0.6]
+var _h_offsets: Array[float] = H_CAST_Y_OFFSETS
 
 func _ready() -> void:
 	set_process(false)
@@ -53,24 +62,24 @@ func _ready() -> void:
 	for offset in _h_offsets:
 		_h_casts.append(_create_forward_cast(offset))
 	
-	_down_cast = _create_down_cast(-mantle_max_height - 0.1)
-	_down_cast.position = Vector3(0, mantle_max_height + 0.1, -1.0)
+	_down_cast = _create_down_cast(-mantle_max_height - DOWN_CAST_MARGIN)
+	_down_cast.position = Vector3(0, mantle_max_height + DOWN_CAST_MARGIN, -DOWN_CAST_FORWARD_OFFSET)
 	
-	_vault_down_cast = _create_down_cast(-vault_detection_range - 0.1 - vault_body_half_height)
-	_vault_down_cast.position = Vector3(0, vault_detection_range + 0.1, 0) # Z set dynamically
-	
+	_vault_down_cast = _create_down_cast(-vault_detection_range - DOWN_CAST_MARGIN - vault_body_half_height)
+	_vault_down_cast.position = Vector3(0, vault_detection_range + DOWN_CAST_MARGIN, 0) # Z set dynamically
+
 	_vault_landing_cast = _create_down_cast(-vault_landing_probe_height - 0.2)
 	_vault_landing_cast.position = Vector3(0, vault_landing_probe_height, -vault_landing_probe_distance)
 	
-	_left_cast  = _create_forward_raycast(0.5)
+	_left_cast  = _create_forward_raycast(LATERAL_CAST_Y_OFFSET)
 	_left_cast.top_level = true
-	_right_cast = _create_forward_raycast(0.5)
+	_right_cast = _create_forward_raycast(LATERAL_CAST_Y_OFFSET)
 	_right_cast.top_level = true
 
 func _create_forward_cast(y_offset: float) -> ShapeCast3D:
 	var cast: ShapeCast3D = ShapeCast3D.new()
 	cast.shape = SphereShape3D.new()
-	cast.shape.radius = 0.1
+	cast.shape.radius = FORWARD_CAST_SPHERE_RADIUS
 	cast.position = Vector3(0, y_offset, 0)
 	cast.target_position = Vector3(0, 0, -wall_detection_reach)
 	cast.collision_mask = 1
@@ -89,7 +98,7 @@ func _create_forward_raycast(y_offset: float) -> RayCast3D:
 func _create_down_cast(target_y: float) -> ShapeCast3D:
 	var cast: ShapeCast3D = ShapeCast3D.new()
 	cast.shape = SphereShape3D.new()
-	cast.shape.radius = 0.1
+	cast.shape.radius = FORWARD_CAST_SPHERE_RADIUS
 	cast.target_position = Vector3(0, target_y, 0)
 	cast.collision_mask = 1
 	add_child(cast)
@@ -117,15 +126,15 @@ func update_facts(body_reader: BodyReader) -> void:
 
 
 	# Update special vertical casts (positions are global because parent is a Node)
-	_down_cast.global_position = pos + facing * 1.0 + Vector3.UP * (mantle_max_height + 0.1)
+	_down_cast.global_position = pos + facing * FORWARD_SAMPLE_OFFSET + Vector3.UP * (mantle_max_height + DOWN_CAST_MARGIN)
 	_down_cast.force_shapecast_update()
 
 	_vault_landing_cast.global_position = pos + facing * vault_landing_probe_distance + Vector3.UP * vault_landing_probe_height
 	_vault_landing_cast.force_shapecast_update()
 
 	# Vault downcast refresh
-	var v_dist: float = min_dist + 0.2
-	_vault_down_cast.global_position = pos + facing * v_dist + Vector3.UP * (vault_detection_range + 0.1)
+	var v_dist: float = min_dist + VAULT_DIST_MARGIN
+	_vault_down_cast.global_position = pos + facing * v_dist + Vector3.UP * (vault_detection_range + DOWN_CAST_MARGIN)
 	_vault_down_cast.force_shapecast_update()
 
 	var feet_y: float = pos.y - vault_body_half_height
@@ -170,7 +179,7 @@ func _detect_vault(pos: Vector3, facing: Vector3, hits: Array[bool], feet_y: flo
 			if hits[i]:
 				var n: Vector3 = _h_casts[i].get_collision_normal(0)
 				# 45 deg or steeper (cos(45) approx 0.707) -> y < 0.75 means mostly vertical
-				if n.y < 0.75:
+				if n.y < STEEP_FACE_NORMAL_Y_MAX:
 					steep_enough = true
 					break
 		
@@ -252,7 +261,7 @@ func _is_at_mantle_edge(body_position: Vector3, ledge_point: Vector3) -> bool:
 
 func _update_vault_target(facing: Vector3, body_position: Vector3, lip_point: Vector3) -> void:
 	# "Step-up" paradigm: Vaulting places the player slightly over the lip, like a mini-mantle.
-	var vault_forward_distance: float = mantle_body_radius * 1.5
+	var vault_forward_distance: float = mantle_body_radius * VAULT_FORWARD_RADIUS_MULT
 	_vault_target_position = body_position + facing * vault_forward_distance
 	_vault_target_position.y = lip_point.y + vault_body_half_height + vault_surface_clearance
 

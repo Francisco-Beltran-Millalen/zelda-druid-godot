@@ -20,6 +20,9 @@ func test_default_values():
 	assert_eq(subject.wall_normal, Vector3.ZERO, "wall_normal should default to ZERO")
 	assert_eq(subject.target_position, Vector3.ZERO, "target_position should default to ZERO")
 	assert_eq(subject.ledge_point, Vector3.ZERO, "ledge_point should default to ZERO")
+	assert_false(subject.has_head_hit, "has_head_hit should default to false")
+	assert_false(subject.has_wall_left, "has_wall_left should default to false")
+	assert_false(subject.has_wall_right, "has_wall_right should default to false")
 	assert_eq(subject.vault_target_position, Vector3.ZERO, "vault_target_position should default to ZERO")
 	assert_false(subject.is_vaultable, "is_vaultable should default to false")
 

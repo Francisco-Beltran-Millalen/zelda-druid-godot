@@ -10,22 +10,22 @@ const MIN_MANTLE_DURATION: float = 0.08
 @export var mantle_forward_speed: float = 3.0
 @export var mantle_arc_height: float = 0.25
 
-var _is_mantling: bool = false
+enum Phase { INACTIVE, ACTIVATING, RUNNING }
+var _phase: Phase = Phase.INACTIVE
 var _needs_mantle_release: bool = false
 var _elapsed: float = 0.0
 var _duration: float = MIN_MANTLE_DURATION
 var _start_position: Vector3 = Vector3.ZERO
 var _target_position: Vector3 = Vector3.ZERO
-var _just_activated: bool = false
 
 func gather_proposals(current_mode: int, intents: Intents, services: Array[BaseService], _stamina: StaminaComponent) -> Array[TransitionProposal]:
 	if not intents.wants_mantle:
 		_needs_mantle_release = false
 
 	# Sticky state: if we are already mantling, we MUST continue until tick() finishes.
-	# The _just_activated flag ensures we hold the state during the one-frame window
-	# before _is_mantling is set in the first tick().
-	if current_mode == LocomotionState.ID.MANTLE and (_is_mantling or _just_activated):
+	# The ACTIVATING phase ensures we hold the state during the one-frame window
+	# before RUNNING is set in the first tick().
+	if current_mode == LocomotionState.ID.MANTLE and (_phase == Phase.RUNNING or _phase == Phase.ACTIVATING):
 		return [TransitionProposal.new(LocomotionState.ID.MANTLE, TransitionProposal.Priority.FORCED, MANTLE_PRIORITY_WEIGHT)]
 
 	if _needs_mantle_release:
@@ -40,7 +40,7 @@ func gather_proposals(current_mode: int, intents: Intents, services: Array[BaseS
 		if not (is_climbing or is_wall_jumping):
 			return []
 			
-		var facts: LedgeFacts = ledge.get_ledge_facts(_broker.get_body_reader())
+		var facts: LedgeFacts = ledge.get_ledge_facts()
 		var at_edge: bool = facts.is_at_mantle_edge
 		# Re-introduce height threshold with tolerance for climb ceiling clip (1.33m).
 		# This prevents mantling lower walls.
@@ -56,9 +56,11 @@ func gather_proposals(current_mode: int, intents: Intents, services: Array[BaseS
 	return []
 
 func tick(delta: float, _intents: Intents, body: CharacterBody3D, _stamina: StaminaComponent, services: Array[BaseService]) -> void:
-	_just_activated = false
+	if _phase == Phase.ACTIVATING:
+		_phase = Phase.INACTIVE
+		
 	var ledge: LedgeService = _get_service(services, LedgeService) as LedgeService
-	if not _is_mantling and not _begin_mantle(body, ledge):
+	if _phase != Phase.RUNNING and not _begin_mantle(body, ledge):
 		body.velocity = Vector3.ZERO
 		body.move_and_slide()
 		return
@@ -75,23 +77,22 @@ func tick(delta: float, _intents: Intents, body: CharacterBody3D, _stamina: Stam
 
 	if raw_progress >= 1.0:
 		body.global_position = _target_position
-		_is_mantling = false
+		_phase = Phase.INACTIVE
 
 func on_activate(_body: CharacterBody3D) -> void:
-	_is_mantling = false
-	_just_activated = true
+	_phase = Phase.ACTIVATING
 	_needs_mantle_release = true # Lock input now that we successfully started
 	_elapsed = 0.0
 
 func on_deactivate(_body: CharacterBody3D) -> void:
-	_is_mantling = false
+	_phase = Phase.INACTIVE
 	_elapsed = 0.0
 
 func _begin_mantle(body: CharacterBody3D, ledge: LedgeService) -> bool:
 	if ledge == null:
 		return false
 	
-	var facts: LedgeFacts = ledge.get_ledge_facts(_broker.get_body_reader())
+	var facts: LedgeFacts = ledge.get_ledge_facts()
 	if facts.target_position == Vector3.ZERO:
 		return false
 
@@ -107,5 +108,5 @@ func _begin_mantle(body: CharacterBody3D, ledge: LedgeService) -> bool:
 
 	_duration = maxf(maxf(vertical_duration, horizontal_duration), MIN_MANTLE_DURATION)
 	_elapsed = 0.0
-	_is_mantling = true
+	_phase = Phase.RUNNING
 	return true

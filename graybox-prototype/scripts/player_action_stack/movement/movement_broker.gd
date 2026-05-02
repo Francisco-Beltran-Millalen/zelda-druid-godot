@@ -2,6 +2,7 @@ class_name MovementBroker
 extends Node
 
 signal state_changed(old_mode: int, new_mode: int)
+signal physics_tick_complete(intents: Intents, current_mode: int)
 
 @export var motor_map: Dictionary[int, NodePath] = {}
 @onready var _brain: Node = $"../PlayerBrain"
@@ -16,6 +17,7 @@ var _motors: Dictionary = {}
 var _services: Array[BaseService] = []
 var _body_reader: BodyReader
 var _loco_state: LocomotionState
+var _state_reader: LocomotionStateReader
 
 ## Public API for state access
 func get_current_mode() -> int:
@@ -29,10 +31,17 @@ var _current_mode: int:
 func get_body_reader() -> BodyReader:
 	return _body_reader
 
+func get_state_reader() -> LocomotionStateReader:
+	return _state_reader
+
 func _ready() -> void:
 	_body_reader = BodyReader.new(_body)
 	_loco_state = LocomotionState.new()
+	_state_reader = LocomotionStateReader.new(_loco_state)
 	add_child(_loco_state)
+	
+	var reporter = MovementBrokerDebugReporter.new()
+	add_child(reporter)
 	
 	## Forward LocomotionState.state_changed as MovementBroker.state_changed
 	_loco_state.state_changed.connect(func(o: int, n: int) -> void: state_changed.emit(o, n))
@@ -57,9 +66,6 @@ func _ready() -> void:
 	for m in _motors.values():
 		if m is BaseMotor:
 			m._broker = self
-			
-	if has_node("../VisualsPivot"):
-		get_node("../VisualsPivot").set_process(true)
 
 func _guess_state_id(motor_name: String) -> int:
 	match motor_name:
@@ -116,47 +122,4 @@ func _physics_process(delta: float) -> void:
 		if active_motor is BaseMotor:
 			active_motor.tick(delta, intents, _body, _stamina, _services)
 
-	if OS.is_debug_build() and has_node("/root/DebugOverlay"):
-		var m_name: String = LocomotionState.ID.keys()[_current_mode]
-		var spd: float = Vector2(_body.velocity.x, _body.velocity.z).length()
-		var stamina_cur: float = _stamina.get_current() if _stamina else 0.0
-		var stamina_max: float = _stamina.get_max() if _stamina else 100.0
-		var stamina_pct: int = roundi(stamina_cur / stamina_max * 100.0)
-		
-		# Collect active intents for debugging
-		var active_intents: Array[String] = []
-		if intents.wants_jump: active_intents.append("Jump")
-		if intents.wants_sprint: active_intents.append("Sprint")
-		if intents.wants_sneak: active_intents.append("Sneak")
-		if intents.wants_climb: active_intents.append("Climb")
-		if intents.wants_mantle: active_intents.append("Mantle")
-		if intents.wants_vault: active_intents.append("Vault")
-		if intents.wants_glide: active_intents.append("Glide")
-		
-		var intents_str: String = " ".join(active_intents.map(func(s): return "[" + s + "]"))
-		
-		# Semantic direction debug
-		var dir_str: String = ""
-		if intents.is_moving_forward: dir_str += "F"
-		if intents.is_moving_back: dir_str += "B"
-		if intents.is_moving_left: dir_str += "L"
-		if intents.is_moving_right: dir_str += "R"
-		if dir_str == "": dir_str = "-"
-		
-		var v_status: String = " (V)" if _ledge_service and _ledge_service.get_ledge_facts(_body_reader).is_vaultable else ""
-		
-		var ledge_debug: String = ""
-		if _ledge_service:
-			var facts = _ledge_service.get_ledge_facts(_body_reader)
-			ledge_debug = facts.debug_text
-		
-		get_node("/root/DebugOverlay").push(1, {
-			"state": m_name + v_status, 
-			"speed": snappedf(spd, 0.1), 
-			"vel_y": snappedf(_body.velocity.y, 0.1), 
-			"stamina": "%d%%" % stamina_pct,
-			"wish": dir_str,
-			"str": "%.2f" % intents.input_strength,
-			"intents": intents_str if intents_str != "" else "None",
-			"ledge": ledge_debug
-		})
+	physics_tick_complete.emit(intents, _current_mode)

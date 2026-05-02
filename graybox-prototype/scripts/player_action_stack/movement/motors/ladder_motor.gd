@@ -5,12 +5,15 @@ extends BaseMotor
 @export var snap_lerp: float = 12.0     ## How fast body locks to ladder X/Z anchor
 @export var top_exit_bump: float = 3.0  ## Upward velocity injected when stepping off the top
 
+const MOVE_DIR_THRESHOLD_SQ: float = 0.01
+const LADDER_TOP_EXIT_CLEARANCE: float = 0.1
+
 func gather_proposals(current_mode: int, intents: Intents, services: Array[BaseService], _stamina: StaminaComponent) -> Array[TransitionProposal]:
 	var ladder_svc: LadderService = _get_service(services, LadderService) as LadderService
 	if ladder_svc == null or not ladder_svc.is_on_ladder():
 		return []
 	## Latch on once entered; release only when player jumps or leaves the area.
-	if current_mode == LocomotionState.ID.LADDER or intents.move_dir.length_squared() > 0.01 or intents.wants_climb:
+	if current_mode == LocomotionState.ID.LADDER or intents.move_dir.length_squared() > MOVE_DIR_THRESHOLD_SQ or intents.wants_climb:
 		return [TransitionProposal.new(LocomotionState.ID.LADDER, TransitionProposal.Priority.FORCED)]
 	return []
 
@@ -33,7 +36,7 @@ func tick(delta: float, intents: Intents, body: CharacterBody3D, _stamina: Stami
 
 	## Auto-exit at top: if player is near the top and still pressing forward, give a small
 	## upward bump so they step onto the landing instead of capping at the ladder top.
-	if body.global_position.y >= ladder.get_top_y() - 0.1 and intents.raw_input.y < 0.0:
+	if body.global_position.y >= ladder.get_top_y() - LADDER_TOP_EXIT_CLEARANCE and intents.raw_input.y < 0.0:
 		body.velocity.y = top_exit_bump
 		
 	body.move_and_slide()

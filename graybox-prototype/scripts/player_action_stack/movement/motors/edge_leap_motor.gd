@@ -12,6 +12,8 @@ var _is_leaping: bool = false
 var _leap_timer: float = 0.0
 var _needs_release: bool = false
 const LEAP_DURATION: float = 0.3
+const FORCED_WEIGHT: int = 10
+const WALL_PUSH_SPEED: float = 2.0
 
 func gather_proposals(current_mode: int, intents: Intents, services: Array[BaseService], stamina: StaminaComponent) -> Array[TransitionProposal]:
 	if not intents.wants_jump:
@@ -21,7 +23,7 @@ func gather_proposals(current_mode: int, intents: Intents, services: Array[BaseS
 	if current_mode == LocomotionState.ID.CLIMB and intents.wants_jump and not _needs_release:
 		var ledge: LedgeService = _get_service(services, LedgeService) as LedgeService
 		if ledge:
-			var facts: LedgeFacts = ledge.get_ledge_facts(_broker.get_body_reader())
+			var facts: LedgeFacts = ledge.get_ledge_facts()
 			
 			var jumping_left: bool = intents.is_climbing_left
 			var jumping_right: bool = intents.is_climbing_right
@@ -31,11 +33,11 @@ func gather_proposals(current_mode: int, intents: Intents, services: Array[BaseS
 			
 			if (at_left_edge or at_right_edge) and (stamina == null or not stamina.is_exhausted()):
 				_needs_release = true
-				return [TransitionProposal.new(LocomotionState.ID.EDGE_LEAP, TransitionProposal.Priority.FORCED, 10)]
-	
+				return [TransitionProposal.new(LocomotionState.ID.EDGE_LEAP, TransitionProposal.Priority.FORCED, FORCED_WEIGHT)]
+
 	# Sticky state during the leap animation/movement
 	if current_mode == LocomotionState.ID.EDGE_LEAP and _is_leaping:
-		return [TransitionProposal.new(LocomotionState.ID.EDGE_LEAP, TransitionProposal.Priority.FORCED, 10)]
+		return [TransitionProposal.new(LocomotionState.ID.EDGE_LEAP, TransitionProposal.Priority.FORCED, FORCED_WEIGHT)]
 		
 	return []
 
@@ -66,7 +68,7 @@ func tick(delta: float, intents: Intents, body: CharacterBody3D, stamina: Stamin
 			jump_dir = normal
 			
 		# Impulse: Lateral push + small push away from wall + vertical boost
-		body.velocity = (jump_dir * leap_away_impulse) + (normal * 2.0) + (Vector3.UP * vertical_boost)
+		body.velocity = (jump_dir * leap_away_impulse) + (normal * WALL_PUSH_SPEED) + (Vector3.UP * vertical_boost)
 		
 		if stamina:
 			stamina.drain(stamina_cost)

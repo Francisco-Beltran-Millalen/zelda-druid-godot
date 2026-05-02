@@ -9,8 +9,6 @@ const MIN_STICK_LENGTH_SQUARED: float = 0.001  ## Minimum squared length to appl
 @export var wall_approach_speed: float = 0.5
 @export var ledge_top_offset: float = 0.33  ## Distance below ledge top to cap climb position
 
-var _last_climb_normal: Vector3 = Vector3.ZERO
-
 func gather_proposals(current_mode: int, intents: Intents, services: Array[BaseService], stamina: StaminaComponent) -> Array[TransitionProposal]:
 	var ledge: LedgeService = _get_service(services, LedgeService) as LedgeService
 	var exhausted: bool = false
@@ -20,16 +18,17 @@ func gather_proposals(current_mode: int, intents: Intents, services: Array[BaseS
 		return []
 	var ground: GroundService = _get_service(services, GroundService) as GroundService
 	var on_floor: bool = ground != null and ground.is_on_floor()
-	# `_last_climb_normal` is only set after a real waist-cast hit on a climbable
-	# wall, so it witnesses an in-progress climbing session. Required to avoid
-	# trapping the player in climb mode if they ever stand on flat ground while
-	# still holding climb without having climbed anything.
-	var has_climb_context: bool = _last_climb_normal != Vector3.ZERO
 	var climbing: bool = current_mode == LocomotionState.ID.CLIMB
 	# Sticky-on-floor: at curved apexes (sphere/cylinder top) `is_on_floor()` is
 	# true and the waist cast geometry flickers — without this clause, mode would
 	# oscillate Climb↔Walk every frame, producing a yaw seizure.
-	if climbing and ((on_floor and has_climb_context) or ledge.can_continue_climbing()):
+	# We only treat as "near_apex" if on floor AND NOT hitting something at head level
+	# (sensor-relative approach). The ledge_point check ensures we are actually
+	# at a ledge and not just on flat ground.
+	var facts: LedgeFacts = ledge.get_ledge_facts() if ledge else null
+	var near_apex: bool = on_floor and facts and not facts.has_head_hit and facts.ledge_point != Vector3.ZERO
+
+	if climbing and (near_apex or ledge.can_continue_climbing()):
 		return [TransitionProposal.new(LocomotionState.ID.CLIMB, TransitionProposal.Priority.OPPORTUNISTIC, 5)]
 	if not climbing and ledge.can_climb():
 		return [TransitionProposal.new(LocomotionState.ID.CLIMB, TransitionProposal.Priority.PLAYER_REQUESTED, 5)]
@@ -37,12 +36,8 @@ func gather_proposals(current_mode: int, intents: Intents, services: Array[BaseS
 
 func tick(delta: float, intents: Intents, body: CharacterBody3D, stamina: StaminaComponent, services: Array[BaseService]) -> void:
 	var ledge: LedgeService = _get_service(services, LedgeService) as LedgeService
+	var facts: LedgeFacts = ledge.get_ledge_facts() if ledge else null
 	var climb_normal: Vector3 = ledge.get_climb_normal() if ledge else Vector3.ZERO
-
-	if climb_normal != Vector3.ZERO:
-		_last_climb_normal = climb_normal
-	elif _last_climb_normal != Vector3.ZERO:
-		climb_normal = _last_climb_normal
 
 	if climb_normal == Vector3.ZERO:
 		return
@@ -53,9 +48,15 @@ func tick(delta: float, intents: Intents, body: CharacterBody3D, stamina: Stamin
 	# point, unlike checking climb_normal (which reflects the cast hit point, not the body
 	# contact). When near the apex, suppress the yaw snap and wall_stick entirely so the
 	# player keeps the last stable orientation and can_continue_climbing() stays consistent.
-	var near_apex: bool = body.is_on_floor()
+	# We only treat as "near_apex" if on floor AND NOT hitting something at head level
+	# (sensor-relative approach). The ledge_point check ensures we are actually
+	# at a ledge and not just on flat ground.
+	var ground: GroundService = _get_service(services, GroundService) as GroundService
+	var on_floor: bool = ground.is_on_floor() if ground else body.is_on_floor()
+	# NOTE: near_apex formula is duplicated in gather_proposals — G2 soft signal; do not extract helper at this scale.
+	var near_apex: bool = on_floor and facts and not facts.has_head_hit and facts.ledge_point != Vector3.ZERO
 
-	var touching_wall: bool = body.is_on_wall()
+	var touching_wall: bool = ledge.can_continue_climbing() if ledge else body.is_on_wall()
 
 	if not near_apex:
 		# Always flatten the facing direction to horizontal. On curved surfaces (sphere/
@@ -99,7 +100,6 @@ func tick(delta: float, intents: Intents, body: CharacterBody3D, stamina: Stamin
 	body.velocity.z = lateral_vel.z + wall_stick.z
 
 	if ledge:
-		var facts: LedgeFacts = ledge.get_ledge_facts(_broker.get_body_reader())
 		# Clipping to ledge height: soft limit at neck height.
 		# This prevents climbing over the top and forces a Mantle transition.
 		if facts.lip_height != -INF and body.velocity.y > 0:
@@ -120,6 +120,3 @@ func tick(delta: float, intents: Intents, body: CharacterBody3D, stamina: Stamin
 
 	if stamina:
 		stamina.drain(stamina_cost_per_sec * delta)
-
-func on_deactivate(_body: CharacterBody3D) -> void:
-	_last_climb_normal = Vector3.ZERO

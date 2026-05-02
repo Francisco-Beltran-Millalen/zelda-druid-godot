@@ -9,13 +9,16 @@ var _yaw: float = 0.0
 var _pitch: float = 0.0
 
 @onready var _body: CharacterBody3D = $"../EntityController/Body"
-@onready var _broker: Node = $"../EntityController/MovementBroker"
 @onready var _lens: SpringArm3D = $Lens
 
 func _ready() -> void:
+	# Registered visual-update loop owner — _process intentionally always-on (smooth camera interpolation).
 	set_as_top_level(true)
-	if _broker:
-		_broker.state_changed.connect(_on_locomotion_state_changed)
+	var broker = get_node_or_null("../EntityController/MovementBroker")
+	if broker and broker.has_method("get_state_reader"):
+		var state_reader = broker.get_state_reader()
+		if state_reader:
+			state_reader.state_changed.connect(_on_locomotion_state_changed)
 	
 	if has_node("../EntityController/PlayerBrain"):
 		get_node("../EntityController/PlayerBrain").mouse_motion_received.connect(_on_mouse_motion)

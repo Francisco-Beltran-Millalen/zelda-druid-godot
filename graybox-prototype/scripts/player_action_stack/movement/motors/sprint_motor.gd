@@ -23,6 +23,12 @@ func gather_proposals(_current_mode: int, intents: Intents, services: Array[Base
 	var stairs: StairsService = _get_service(services, StairsService) as StairsService
 	if stairs != null and stairs.is_on_stairs():
 		return []
+	## Abstain on climbable wall — ClimbMotor wins arbitration when the player is facing a
+	## climbable surface and has climb toggled on.  SprintMotor's flat-floor velocity would
+	## fight the wall-stick and prevent CLIMB from ever winning PLAYER_REQUESTED arbitration.
+	var ledge: LedgeService = _get_service(services, LedgeService) as LedgeService
+	if ledge != null and ledge.can_climb() and intents.wants_climb:
+		return []
 	if ground != null and ground.is_on_floor() and intents.wants_sprint and not _stamina_locked:
 		return [TransitionProposal.new(LocomotionState.ID.SPRINT, 2)]
 	return []

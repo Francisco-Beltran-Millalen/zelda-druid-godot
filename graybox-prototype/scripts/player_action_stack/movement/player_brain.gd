@@ -2,10 +2,10 @@ extends Node
 
 signal mouse_motion_received(relative: Vector2)
 
-var _camera_rig: Node3D
-var _broker: MovementBroker
+const WISH_DIR_THRESHOLD: float = 0.5
 
-var _climb_toggle: bool = false
+var _camera_rig: Node3D
+@onready var _climb_toggle_component: ClimbToggleComponent = $"../ClimbToggleComponent"
 
 func _ready() -> void:
 	set_process(false)
@@ -13,26 +13,6 @@ func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	
 	_camera_rig = get_node_or_null("../../CameraRig")
-	_broker = get_node_or_null("../MovementBroker")
-	
-	if _broker:
-		_broker.state_changed.connect(_on_locomotion_state_changed)
-
-func _on_locomotion_state_changed(_old_mode: int, new_mode: int) -> void:
-	# Reset climb toggle if we mantle, do a regular floor jump, or perform an edge leap
-	if new_mode == LocomotionState.ID.MANTLE \
-	or new_mode == LocomotionState.ID.JUMP \
-	or new_mode == LocomotionState.ID.EDGE_LEAP:
-		_climb_toggle = false
-	
-	# Conditional reset for Wall Jump:
-	# We want to stick to the wall (keep toggle) if we are jumping Up, Left, or Right.
-	# We want to leave the wall (reset toggle) if we jump Away (Neutral or Back).
-	elif new_mode == LocomotionState.ID.WALL_JUMP:
-		var intents: Intents = get_intents()
-		var is_jumping_to_stick: bool = intents.is_climbing_up or intents.is_climbing_left or intents.is_climbing_right
-		if not is_jumping_to_stick:
-			_climb_toggle = false
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
@@ -43,9 +23,6 @@ func _input(event: InputEvent) -> void:
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 		else:
 			get_tree().quit() # Allow easy quitting if they press ESC twice
-			
-	if event.is_action_pressed("climb_debug"):
-		_climb_toggle = !_climb_toggle
 
 func get_intents() -> Intents:
 	var intents: Intents = Intents.new()
@@ -56,12 +33,12 @@ func get_intents() -> Intents:
 	
 	# Populate wish_dir (discrete semantic intent)
 	var wd_x: int = 0
-	if input_dir.x > 0.5: wd_x = 1
-	elif input_dir.x < -0.5: wd_x = -1
-	
+	if input_dir.x > WISH_DIR_THRESHOLD: wd_x = 1
+	elif input_dir.x < -WISH_DIR_THRESHOLD: wd_x = -1
+
 	var wd_y: int = 0
-	if input_dir.y < -0.5: wd_y = 1 # move_forward is negative Y in get_vector
-	elif input_dir.y > 0.5: wd_y = -1
+	if input_dir.y < -WISH_DIR_THRESHOLD: wd_y = 1 # move_forward is negative Y in get_vector
+	elif input_dir.y > WISH_DIR_THRESHOLD: wd_y = -1
 	
 	intents.wish_dir = Vector2i(wd_x, wd_y)
 	
@@ -87,7 +64,7 @@ func get_intents() -> Intents:
 		intents.wants_sprint = true
 	
 	# Use toggle for climbing
-	intents.wants_climb = _climb_toggle
+	intents.wants_climb = _climb_toggle_component.is_active() if _climb_toggle_component else false
 	
 	if Input.is_action_pressed("mantle_debug"):
 		intents.wants_mantle = true
