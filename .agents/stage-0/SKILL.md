@@ -98,7 +98,7 @@ Depending on the issue:
 
 #### 5. Document the Change
 
-Add an entry to `docs/workflow-changelog.md` with:
+Run `/log-session` to document the change. The entry goes to `docs/logs/YYYY-month/changelog.md` with:
 - Date
 - Problem summary
 - Root cause
@@ -378,21 +378,18 @@ On completion, export the session log using:
 /log-session
 ```
 
-This creates `docs/logs/stage-00-meta-workflow-YYYYMMDD-HHMMSS.txt`.
-
-The `workflow-changelog.md` file captures specific changes made during workflow maintenance.
+This writes to `docs/logs/YYYY-month/changelog.md` (detailed entry) and `docs/logs/YYYY-month/summary.md` (quick recall).
 
 ## Output Artifacts
 
-### Artifact: `docs/workflow-changelog.md` (workflow maintenance mode)
+### Artifact: `docs/logs/YYYY-month/changelog.md` (workflow maintenance mode)
 
-Append-only log of workflow changes:
+Append-only log of workflow changes written by `/log-session`:
 
 ```markdown
 ## YYYY-MM-DD: Brief Description
 
 **Problem:** What went wrong
-**Cause:** Why it happened
 **Fix:** What was changed
 **Files:** List of modified files
 ```
@@ -417,7 +414,7 @@ Any workflow files that were patched:
 - [ ] Root cause is identified
 - [ ] Fix is implemented
 - [ ] Fix is verified (if testable)
-- [ ] Change is documented in `workflow-changelog.md`
+- [ ] Change is documented via `/log-session`
 - [ ] User confirms issue is resolved
 
 **Git operations:**

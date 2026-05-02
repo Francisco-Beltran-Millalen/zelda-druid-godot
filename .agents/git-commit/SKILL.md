@@ -1,120 +1,99 @@
-# Git Commit Skill
-
-Walk through a git commit workflow one command at a time. The user approves, rejects, or asks for explanation at each step.
-
-## Interaction Pattern
-
-For every command:
-
-1. Show the command in a code block
-2. Give a one-line plain-English explanation
-3. Ask: `Run this? [yes / no / explain more]`
-4. Wait for the response before proceeding
-
-If the user says **explain more**: give a fuller explanation of what the command does and why, then ask again.
-If the user says **no**: skip that step and note it, then move to the next.
-If the user says **yes**: run the command and show the output before continuing.
-
-**Never run a command without approval.**
-
 ---
+name: git-commit
+description: Stage, commit, and optionally push changes. One confirmation before executing.
+---
+
+# Git Commit
 
 ## Process
 
-### Step 1: Check What Changed
+### Step 1: Investigate (automatic — no confirmation needed)
+
+Run these silently and read the output:
 
 ```bash
 git status
+git diff --stat
+git log --oneline -5
 ```
-> Shows all modified, new, and deleted files so we know what's in scope for this commit.
 
-Run this? [yes / no / explain more]
+- `git status` — shows which files changed, which are new, which are deleted.
+- `git diff --stat` — shows how many lines changed in each file.
+- `git log --oneline -5` — shows the last 5 commits so you can follow the existing message style.
+
+**Safety check:** If any file looks sensitive (`.env`, `*.pem`, `*credentials*`, `*secret*`), flag it to the user and do NOT stage it.
 
 ---
 
-### Step 2: Determine Stage Context
+### Step 2: Propose (one confirmation)
 
-Use the stage identifier and context from the current session to determine what was just completed — e.g., "graybox-1 mechanic spec" or "implement player movement mechanic".
+Based on the session context and the investigation output, present a single proposal:
 
-If context is unclear, ask: "What should I use as the commit message context?"
+```
+Here's what I'll commit:
+
+  Stage:
+    git add <file1> <file2> ...
+
+  Message:
+    <type>: <description>
+
+  Confirm? [yes / no / adjust]
+```
+
+- If the user says **no**: ask what to change and re-propose.
+- If the user says **adjust**: ask what to change and re-propose.
+- If the user says **yes**: proceed to Step 3.
+
+**Commit message format:**
+
+| Work type | Format |
+|-----------|--------|
+| Mechanic / graybox code | `graybox: <what was done>` |
+| Asset added | `asset: add <name>` |
+| Sound added | `sound: add <event-name> sfx` |
+| Design artifact (GDD, architecture, mechanic spec) | `docs: <stage> <artifact>` |
+| Scaffold / project setup | `chore: <what was set up>` |
+| Workflow / skill / meta | `workflow: <what was fixed or added>` |
+| Bug fix | `fix: <what was broken and how it was fixed>` |
+
+Keep the message under 72 characters. Use lowercase. No period at the end.
 
 ---
 
-### Step 3: Stage the Files
+### Step 3: Stage and show the diff (automatic)
 
-Based on `git status` output, propose adding files relevant to the completed work.
-
-For each logical group, show one `git add` command:
-
-```bash
-git add graybox-prototype/ docs/mechanic-spec.md
-```
-> Stages the Godot project changes and updated mechanic spec for the completed mechanic.
-
-Run this? [yes / no / explain more]
-
-If there are workflow artifacts that changed (e.g., `docs/mechanic-spec.md`, stage files):
-
-```bash
-git add docs/mechanic-spec.md
-```
-> Stages the updated mechanic spec.
-
-Run this? [yes / no / explain more]
-
----
-
-### Step 4: Review What's Staged
+Run the agreed `git add` command(s), then immediately show the staged summary:
 
 ```bash
 git diff --staged --stat
 ```
-> Shows a summary of exactly what will be included in the commit.
 
-Run this? [yes / no / explain more]
-
----
-
-### Step 5: Commit
-
-Propose a commit message based on the stage context:
-
-**Format:**
-- Mechanic implementation (graybox-5): `graybox: implement [mechanic name]`
-- Asset added (asset-4): `asset: add [asset-name] + Godot integration`
-- Sound added (sound-3): `sound: add [event-name] sfx`
-- Design artifact (gdd/architecture/mechanic, graybox-1/2/4, asset-1/2, sound-1/2): `docs: [stage] [artifact name]`
-- Scaffold / setup (graybox-1): `chore: scaffold Godot project`
-- Meta / workflow (stage 0): `workflow: [what was fixed or added]`
-
-Example:
-```bash
-git commit -m "graybox: implement player movement"
-```
-> Creates a commit with all staged changes and this message.
-
-Run this? [yes / no / explain more]
+This confirms exactly what will go into the commit. If something looks wrong, say so before continuing — the user can still adjust.
 
 ---
 
-### Step 6: Push (Optional)
-
-Ask: "Do you want to push to the remote branch?"
-
-If yes:
+### Step 4: Commit (automatic)
 
 ```bash
-git push
+git commit -m "<agreed message>"
 ```
-> Uploads the commit to the remote repository on the current branch.
 
-Run this? [yes / no / explain more]
+Show the output. If the commit fails (e.g. a pre-commit hook), report the error clearly and suggest a fix.
 
-If the branch has no upstream:
+---
 
-```bash
-git push -u origin <current-branch>
-```
-> Pushes to remote and sets this branch to track the remote branch for future pushes.
+### Step 5: Push (ask once)
 
-Run this? [yes / no / explain more]
+Ask: **"Push to remote?"**
+
+- If **yes** and the branch already has an upstream:
+  ```bash
+  git push
+  ```
+- If **yes** and the branch has no upstream yet:
+  ```bash
+  git push -u origin <current-branch>
+  ```
+  > `-u` sets this branch to track the remote so future `git push` commands need no arguments.
+- If **no**: done. The commit is saved locally and can be pushed later.

@@ -1,6 +1,6 @@
 ---
 name: plan-eval
-description: Evaluate a drafted slice plan against the Constitution.
+description: Spawn a cold skeptical agent to evaluate any plan for logic and architecture failures.
 ---
 Read `.agents/plan-eval/SKILL.md` and follow those instructions.
 Arguments: `$ARGUMENTS`

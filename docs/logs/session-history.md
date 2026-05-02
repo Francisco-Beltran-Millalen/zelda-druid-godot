@@ -1,6 +1,6 @@
 # Session History
 
-Permanent record of all Stage 0 (Meta-Workflow) sessions. Each row captures the date, the work done, and the outcome. Full detail is in `docs/workflow-changelog.md`.
+Permanent record of all Stage 0 (Meta-Workflow) sessions. Each row captures the date, the work done, and the outcome. Full detail is in `docs/logs/YYYY-month/changelog.md`. Legacy history is in `docs/logs/2026-may/legacy-changelog.md`.
 
 ---
 

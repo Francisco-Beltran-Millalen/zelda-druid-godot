@@ -12,9 +12,9 @@ This is the **Game Workflow** — a structured, AI-collaborative process for bui
 
 | Stage | File | Persona | Output |
 |-------|------|---------|--------|
-| 0 | `.agents/stage-0/SKILL.md` | Workflow Engineer | `docs/workflow-changelog.md` |
+| 0 | `.agents/stage-0/SKILL.md` | Workflow Engineer | `docs/logs/YYYY-month/changelog.md` |
 | teacher | `.agents/teacher/SKILL.md` | Patient Teacher | No artifacts |
-| plan-eval | `.agents/plan-eval/SKILL.md` | Plan Evaluator | No artifacts (in-session report) |
+| plan-eval | `.agents/plan-eval/SKILL.md` | Cold Skeptical Evaluator | No artifacts (cold agent report) |
 
 ### gdd-kickstart: GDD Kickstart
 
@@ -54,11 +54,8 @@ This is the **Game Workflow** — a structured, AI-collaborative process for bui
 | Stage | Tool/Skill | Persona | When |
 |-------|------|---------|------|
 | graybox-1 | `workflow/stages/graybox/01-project-initiator.md` | Senior Godot Developer | Once — before any mechanic |
-| slice-plan | `/slice-plan` | Senior Systems Designer | Per feature slice — creates `docs/slices/<slug>-plan.md` |
-| plan-eval | `/plan-eval` | Strict Technical Director | Per feature slice — reviews the drafted plan |
-| implement | `/implement-feature` | Senior Godot Developer | Per feature slice — writes code for an approved plan |
-| run-tests | `/run-stage-tests` | Test Engineer | Per feature slice — verifies functionality |
-| cold-audit | `/cold-audit` | Architecture Auditor | Per feature slice — final structural verification |
+| slice | `/slice` | Slice Orchestrator | Per feature slice — scope → solution selection loop → plan → implement loop → tests |
+| run-tests | `/run-stage-tests` | Test Engineer | Per feature slice (standalone) — verifies functionality |
 
 ### asset: Asset Pipeline
 
@@ -159,17 +156,11 @@ Check `docs/` for existing artifacts:
 **graybox phase (Implementation):**
 - `docs/graybox-visual-language.md` does not exist → graybox-1
 - `docs/graybox-visual-language.md` exists, `graybox-prototype/` does not → graybox-1 (still in progress)
-- `graybox-prototype/` exists, any slice has `Implementation Status: [ ] Not started`:
-  - `docs/slices/[slug]-plan.md` does not exist → `/slice-plan [slug]`
-  - plan exists, not yet evaluated → `/plan-eval [slug]-plan.md`
-  - plan evaluated PASS, code not written → `/implement-feature`
-  - code written, tests not run → `/run-stage-tests`
-  - tests pass, audit not done → `/cold-audit`
-  - audit CLEAN → mark slice done
+- `graybox-prototype/` exists, any slice not yet complete → `/slice`
 - All slices done → phase complete
 
 > **Stage order (per slice):**
-> `/slice-plan` → `/plan-eval` → `/implement-feature` → `/run-stage-tests` → `/cold-audit`
+> `/slice` (scope → solution selection loop → plan → implement loop → tests, with iteration caps)
 
 **asset phase:**
 - `docs/art-direction.md` does not exist → asset-1
@@ -258,7 +249,7 @@ This creates: `docs/logs/stage-graybox-1-project-initiator-20260319-143022.txt`
 8. **Follow stage order** within each phase (gdd-kickstart and architecture are strictly sequential; mechanic-2 and graybox execution loop per mechanic)
 9. **writing is conditional** — only for narrative/dialogue games; can run in parallel with graybox; starts after gdd-7 + mechanic-1
 10. **graybox-7 (Debugger) is on-demand** — invoke only when the running game has incorrect behavior
-11. **plan-eval is called twice per mechanic** — once after mechanic-2 (design doc), once after graybox-2 (execution plan)
+11. **plan-eval is on-demand** — use it to cold-evaluate any plan before implementation (mechanic designs, execution plans, architecture proposals, etc.)
 
 ---
 
@@ -266,10 +257,13 @@ This creates: `docs/logs/stage-graybox-1-project-initiator-20260319-143022.txt`
 
 ### Slash Commands (Skills)
 
+- `/slice` → Orchestrated slice loop (scope → solution selection loop → plan → implement loop → tests)
+- `/slice-builder` → Builder sub-agent (used internally by `/slice`)
+- `/slice-reviewer` → Reviewer sub-agent (used internally by `/slice`)
 - `/start-stage <stage-identifier>` → Start a stage (e.g., `/start-stage graybox-1`)
 - `/stage-0` → Meta-Workflow (fix workflow issues)
 - `/teacher` → Teacher
-- `/log-session` → Summarize session and append to changelog
+- `/log-session` → Log session to `docs/logs/YYYY-month/` (changelog.md + summary.md)
 - `/gdd-to-pdf` → Export GDD to PDF
 
 ### Natural Language
@@ -322,8 +316,7 @@ project-root/
 - Working design artifacts: `docs/`
 - Graybox prototype code: `graybox-prototype/`
 - Architecture decisions: `docs/adrs/`
-- Conversation logs: `docs/logs/`
-- Workflow changelog: `docs/workflow-changelog.md`
+- Session logs: `docs/logs/YYYY-month/changelog.md` (detailed) and `docs/logs/YYYY-month/summary.md` (quick read)
 - Mechanic design journals: `docs/mechanic-designs/`
 - Scene / dialogue scripts: `docs/scenes/`
 - Unit tests: `graybox-prototype/test/unit/`
@@ -363,7 +356,7 @@ Which technique is enforced in which phase. Rules marked **All phases** are neve
 > Current phase and stage are determined by checking `docs/` for existing artifacts.
 
 ### Meta Artifacts
-- [ ] `docs/workflow-changelog.md`
+- [ ] `docs/logs/YYYY-month/` (session logs)
 
 ### gdd-kickstart phase
 - [ ] `docs/human-gdd.md` started ← gdd-1 complete
@@ -392,11 +385,7 @@ Which technique is enforced in which phase. Rules marked **All phases** are neve
 ### graybox phase (Implementation)
 - [ ] `docs/graybox-visual-language.md` + `graybox-prototype/` setup ← graybox-1 complete
 - Per slice loop:
-  - [ ] `docs/slices/[slug]-plan.md` ← slice-plan complete
-  - [ ] Plan evaluated PASS ← plan-eval complete
-  - [ ] GDScript files written ← implement-feature complete
-  - [ ] Tests pass ← run-stage-tests complete
-  - [ ] Audit CLEAN ← cold-audit complete
+  - [ ] Slice complete (solutions doc + plan written, code audited, tests pass) ← `/slice` complete
 
 ### asset phase
 - [ ] `docs/art-direction.md` ← asset-1 complete

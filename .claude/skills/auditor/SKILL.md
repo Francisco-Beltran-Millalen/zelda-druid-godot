@@ -1,6 +1,6 @@
 ---
-name: cold-audit
-description: Perform a cold architectural audit of the newly implemented code.
+name: auditor
+description: Spawn a cold agent to audit implemented code against its spec and general software principles.
 ---
 Read `.agents/auditor/SKILL.md` and follow those instructions.
 Arguments: `$ARGUMENTS`

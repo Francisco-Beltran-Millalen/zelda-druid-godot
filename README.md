@@ -190,4 +190,4 @@ project-root/
 
 ## The Workflow Changelog
 
-Every change to the workflow itself is logged in [`docs/workflow-changelog.md`](docs/workflow-changelog.md). This file is the record of how the workflow evolved — what problems were found, what was fixed, and why.
+Every change to the workflow itself is logged in `docs/logs/YYYY-month/changelog.md`. Read `summary.md` in the same folder for a quick overview; read `changelog.md` for full detail. Legacy history (pre-May 2026) is in `docs/logs/2026-may/legacy-changelog.md`.
